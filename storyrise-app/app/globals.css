@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand anchor */
+  --color-teal: #00bcc8;
+  --color-teal-text: #00838a;
+  --color-teal-tint: #e8fafb;
+
+  /* Hero-only cycling colors */
+  --color-lime: #d0ff00;
+  --color-lime-text: #6b7a00;
+  --color-lime-tint: #f8ffdb;
+
+  --color-green: #1dc27a;
+  --color-green-text: #0f8a57;
+  --color-green-tint: #e5f9ef;
+
+  --color-tangerine: #ff6a1f;
+  --color-tangerine-text: #e8590c;
+  --color-tangerine-tint: #fff0e6;
+
+  /* Neutrals */
+  --color-paper: #fffdfa;
+  --color-ink: #17211f;
+  --color-ink-soft: #5c6b68;
+  --color-line: #e7e2d9;
+
+  --font-display: "Fredoka", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-teal: var(--color-teal);
+  --color-teal-text: var(--color-teal-text);
+  --color-teal-tint: var(--color-teal-tint);
+  --color-lime: var(--color-lime);
+  --color-lime-text: var(--color-lime-text);
+  --color-lime-tint: var(--color-lime-tint);
+  --color-green: var(--color-green);
+  --color-green-text: var(--color-green-text);
+  --color-green-tint: var(--color-green-tint);
+  --color-tangerine: var(--color-tangerine);
+  --color-tangerine-text: var(--color-tangerine-text);
+  --color-tangerine-tint: var(--color-tangerine-tint);
+  --color-paper: var(--color-paper);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-line: var(--color-line);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+}
+
+.bg-collage {
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(0, 188, 200, 0.06) 0, transparent 45%),
+    radial-gradient(circle at 80% 30%, rgba(29, 194, 122, 0.06) 0, transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(255, 106, 31, 0.05) 0, transparent 45%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.thin-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 999px;
+}
