@@ -20,7 +20,8 @@
   --color-tangerine-tint: #fff0e6;
 
   /* Neutrals */
-  --color-paper: #fffdfa;
+  --color-paper: #fffbf5;
+  --color-warm-white: #fffcf8;
   --color-ink: #17211f;
   --color-ink-soft: #5c6b68;
   --color-line: #e7e2d9;
@@ -43,11 +44,14 @@
   --color-tangerine-text: var(--color-tangerine-text);
   --color-tangerine-tint: var(--color-tangerine-tint);
   --color-paper: var(--color-paper);
+  --color-warm-white: var(--color-warm-white);
   --color-ink: var(--color-ink);
   --color-ink-soft: var(--color-ink-soft);
   --color-line: var(--color-line);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
+  --font-fredoka: var(--font-display);
+  --font-inter: var(--font-body);
 }
 
 * {
@@ -91,4 +95,18 @@ h1, h2, h3, h4, .font-display {
 .thin-scroll::-webkit-scrollbar-thumb {
   background: var(--color-line);
   border-radius: 999px;
+}
+
+/* --- Landing page: hero background transition + floating badge animation --- */
+:root {
+  --current-hero-bg: var(--color-teal-tint);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
 }

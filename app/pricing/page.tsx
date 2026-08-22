@@ -5,7 +5,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { Check } from "lucide-react";
 import { useApp, Tier } from "@/lib/app-context";
-import { Footer } from "@/components/landing/Sections";
+import Footer from "@/components/landing/Footer";
 import { useRouter } from "next/navigation";
 
 export default function PricingPage() {

@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
+import "@fontsource/fredoka/500.css";
+import "@fontsource/fredoka/600.css";
+import "@fontsource/fredoka/700.css";
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
 import "./globals.css";
 import { AppProvider } from "@/lib/app-context";
-import TopNav from "@/components/nav/TopNav";
+import ConditionalTopNav from "@/components/nav/ConditionalTopNav";
 import ProCelebration from "@/components/celebration/ProCelebration";
 import UpgradeModal from "@/components/paywall/UpgradeModal";
-import PageBackground from "@/components/ui/PageBackground";
-
-// Loaded via <link> below rather than next/font/google so the build doesn't
-// require network access to fonts.googleapis.com in every environment.
-// Swap to next/font/google once this repo is running somewhere with normal
-// internet access (Codespaces/Vercel) for better perf + self-hosting.
 
 export const metadata: Metadata = {
   title: "StoryRise — Personalized storybooks, illustrated and alive",
@@ -20,18 +20,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body className="min-h-full flex flex-col bg-paper text-ink antialiased">
         <AppProvider>
-          <PageBackground />
-          <TopNav />
+          <ConditionalTopNav />
           <div className="flex-1">{children}</div>
           <ProCelebration />
           <UpgradeModal />
