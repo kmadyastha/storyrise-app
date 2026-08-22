@@ -2,20 +2,20 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useApp, Tier } from "@/lib/app-context";
-import { pricingTiers } from "@/lib/dummy-data";
-import Button from "@/components/ui/Button";
-import { X, Check, Sparkles } from "lucide-react";
+import { pricingTiers, topupPacks } from "@/lib/dummy-data";
+import { X, Check, Sparkles, Zap } from "lucide-react";
 import { useState } from "react";
 
 export default function UpgradeModal() {
-  const { upgradeModalOpen, closeUpgradeModal, setTier, triggerCelebration } = useApp();
+  const { upgradeModalOpen, closeUpgradeModal, setTier, triggerCelebration, addCredits } = useApp();
   const [processing, setProcessing] = useState<string | null>(null);
+  const [justAdded, setJustAdded] = useState<string | null>(null);
 
   if (!upgradeModalOpen) return null;
 
   const choose = (id: string) => {
     setProcessing(id);
-    // Simulated Razorpay checkout — real integration happens post-setup (tomorrow).
+    // Simulated Razorpay checkout — real integration happens post-setup.
     setTimeout(() => {
       setProcessing(null);
       closeUpgradeModal();
@@ -24,17 +24,27 @@ export default function UpgradeModal() {
     }, 1100);
   };
 
+  const buyTopup = (id: string, credits: number) => {
+    setProcessing(id);
+    setTimeout(() => {
+      setProcessing(null);
+      addCredits(credits);
+      setJustAdded(id);
+      setTimeout(() => setJustAdded(null), 1800);
+    }, 800);
+  };
+
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[90] bg-ink/40 backdrop-blur-sm grid place-items-center px-4"
+        className="fixed inset-0 z-[90] bg-ink/40 backdrop-blur-sm grid place-items-center px-4 py-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={closeUpgradeModal}
       >
         <motion.div
-          className="bg-white rounded-[24px] w-full max-w-3xl overflow-hidden grid md:grid-cols-[1fr_1.4fr] shadow-2xl max-h-[88vh]"
+          className="bg-white rounded-[24px] w-full max-w-3xl overflow-hidden grid md:grid-cols-[1fr_1.4fr] shadow-2xl max-h-[90vh]"
           initial={{ scale: 0.94, opacity: 0, y: 10 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.96, opacity: 0 }}
@@ -64,13 +74,17 @@ export default function UpgradeModal() {
             >
               <X size={20} />
             </button>
-            <div className="grid sm:grid-cols-2 gap-3 mt-6">
+
+            <p className="text-xs font-semibold text-ink-soft uppercase tracking-wide mt-6 mb-3">
+              Monthly plans
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3 mb-6">
               {pricingTiers.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => choose(t.id)}
                   disabled={!!processing}
-                  className={`text-left rounded-2xl border p-4 transition-colors ${
+                  className={`text-left rounded-2xl border p-4 transition-colors disabled:opacity-60 ${
                     t.highlighted ? "border-teal bg-teal-tint" : "border-line hover:border-teal"
                   }`}
                 >
@@ -91,6 +105,30 @@ export default function UpgradeModal() {
                 </button>
               ))}
             </div>
+
+            <p className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-3">
+              Or top up credits, no subscription
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {topupPacks.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => buyTopup(p.id, p.credits)}
+                  disabled={!!processing}
+                  className="text-left rounded-2xl border border-line hover:border-tangerine p-3.5 transition-colors disabled:opacity-60"
+                >
+                  <div className="flex items-center gap-1.5 text-tangerine-text mb-1.5">
+                    <Zap size={13} />
+                    <span className="text-lg font-display font-semibold text-ink">{p.price}</span>
+                  </div>
+                  <div className="text-xs text-ink-soft">{p.credits} credits</div>
+                  <div className="text-xs text-ink-soft mt-1">
+                    {processing === p.id ? "Adding…" : justAdded === p.id ? "Added!" : "Tap to buy"}
+                  </div>
+                </button>
+              ))}
+            </div>
+
             <p className="text-[11px] text-ink-soft mt-4">
               Payments are simulated in this preview — Razorpay goes live once account setup is complete.
             </p>

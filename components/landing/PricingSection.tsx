@@ -17,10 +17,10 @@ export default function PricingSection() {
   return (
     <section id="pricing" className="py-[100px] px-10 bg-gradient-to-b from-paper via-warm-white to-paper">
       <div className="text-center max-w-[700px] mx-auto mb-[60px]">
-        <h2 className="font-fredoka font-bold text-[42px] text-[#1a1a1a] mb-3 max-sm:text-[30px]">
+        <h2 className="font-fredoka font-bold text-5xl text-[#1a1a1a] mb-3 max-sm:text-[32px]">
           Simple, credit-based pricing
         </h2>
-        <p className="text-[17px] text-[#777] leading-relaxed">
+        <p className="text-[17px] font-medium text-[#5a5a5a] leading-relaxed">
           Every tier gets full commercial rights. Single global pricing — no watermark restrictions on any paid plan.
         </p>
       </div>
@@ -49,7 +49,7 @@ export default function PricingSection() {
                 <span className="text-base font-medium text-[#999]">/mo</span>
               </div>
               <div className="text-sm text-[#888] mb-4">{plan.credits} credits / month</div>
-              <div className="text-sm text-[#666] leading-relaxed mb-5 min-h-[42px]">{plan.blurb}</div>
+              <div className="text-sm font-medium text-[#5a5a5a] leading-relaxed mb-5 min-h-[42px]">{plan.blurb}</div>
               <ul className="list-none mb-7">
                 {plan.features.map((feat) => (
                   <li key={feat} className="text-sm text-[#555] py-1.5 flex items-start gap-2.5 leading-snug">
@@ -80,7 +80,7 @@ export default function PricingSection() {
           <div className="font-fredoka font-semibold text-[22px] text-[#1a1a1a] mb-1.5">
             Need more credits, no subscription?
           </div>
-          <div className="text-[15px] text-[#888]">
+          <div className="text-[15px] font-medium text-[#5a5a5a]">
             Top-up packs work with or without an active plan — no expiry on top-up credits.
           </div>
         </div>

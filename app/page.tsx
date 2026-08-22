@@ -1,4 +1,3 @@
-import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
 import FeaturesStrip from "@/components/landing/FeaturesStrip";
 import HowItWorks from "@/components/landing/HowItWorks";
@@ -10,7 +9,6 @@ import Footer from "@/components/landing/Footer";
 export default function Home() {
   return (
     <main>
-      <Navbar />
       <HeroSection />
       <FeaturesStrip />
       <HowItWorks />

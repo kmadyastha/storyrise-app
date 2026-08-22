@@ -31,7 +31,7 @@ const heroData: HeroSlide[] = [
   {
     theme: "green",
     label: "Print It, Sell It, Keep It",
-    headline: 'Export as PDF &<br><span class="text-green">KDP-ready</span> books',
+    headline: 'Export as <span class="text-green">PDF</span> &<br><span class="text-green">KDP-ready</span> books',
     subtext: "Export a print-ready PDF or a real KDP file with correct trim size and spine — ready for Amazon or Etsy.",
     image: "/kid4.png",
   },
@@ -68,7 +68,7 @@ const blobColors: Record<string, [string, string]> = {
 const CYCLE_MS = 2000;
 
 export default function HeroSection() {
-  const { loggedIn } = useApp();
+  const { loggedIn, openLoginModal } = useApp();
   const [activeIndex, setActiveIndex] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -103,7 +103,7 @@ export default function HeroSection() {
 
   return (
     <section
-      className="pt-[100px] pb-16 px-10 flex items-center justify-center relative overflow-hidden transition-colors duration-[1800ms]"
+      className="pt-10 pb-16 px-10 flex items-center justify-center relative overflow-hidden transition-colors duration-[1800ms]"
       style={{ backgroundColor: bgColors[current.theme] }}
     >
       <div
@@ -111,7 +111,7 @@ export default function HeroSection() {
         onMouseEnter={stopCycle}
         onMouseLeave={startCycle}
       >
-        <div className="flex flex-1 relative px-[60px] py-[50px] gap-[30px] items-center max-md:flex-col max-md:px-10 max-md:py-10 max-md:text-center">
+        <div className="flex flex-1 relative px-[60px] py-[50px] gap-[30px] items-center shrink-0 max-md:flex-col max-md:px-10 max-md:py-10 max-md:text-center">
           {/* Left Content — all 4 slides stacked, opacity-crossfaded in perfect sync with the image */}
           <div className="flex-[0.9] z-[2] relative max-md:order-2 min-h-[280px]">
             {heroData.map((slide, i) => (
@@ -130,21 +130,33 @@ export default function HeroSection() {
                   dangerouslySetInnerHTML={{ __html: slide.headline }}
                 />
 
-                <p className="text-[18px] leading-[1.65] text-[#666] mb-8 max-w-[440px] max-md:mx-auto max-sm:text-base">
+                <p className="text-[18px] font-medium leading-[1.65] text-[#5a5a5a] mb-8 max-w-[440px] max-md:mx-auto max-sm:text-base">
                   {slide.subtext}
                 </p>
               </div>
             ))}
 
             <div className="flex gap-4 items-center max-md:flex-col max-md:w-full">
-              <Link href={loggedIn ? "/create" : "/login"} className="max-md:w-full">
-                <button className="bg-[#1a1a1a] text-white border-none px-9 py-4 rounded-full font-fredoka font-semibold text-[17px] cursor-pointer transition-all hover:-translate-y-[3px] hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] inline-flex items-center gap-2.5 max-md:w-full max-md:justify-center">
+              {loggedIn ? (
+                <Link href="/create" className="max-md:w-full">
+                  <button className="bg-[#1a1a1a] text-white border-none px-9 py-4 rounded-full font-fredoka font-semibold text-[17px] cursor-pointer transition-all hover:-translate-y-[3px] hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] inline-flex items-center gap-2.5 max-md:w-full max-md:justify-center">
+                    Create Your Story
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </Link>
+              ) : (
+                <button
+                  onClick={openLoginModal}
+                  className="bg-[#1a1a1a] text-white border-none px-9 py-4 rounded-full font-fredoka font-semibold text-[17px] cursor-pointer transition-all hover:-translate-y-[3px] hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] inline-flex items-center gap-2.5 max-md:w-full max-md:justify-center"
+                >
                   Create Your Story
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </button>
-              </Link>
+              )}
               <a href="#how-it-works" className="max-md:w-full">
                 <button className="bg-transparent text-[#1a1a1a] border-2 border-[#e0e0e0] px-[30px] py-3.5 rounded-full font-fredoka font-semibold text-base cursor-pointer transition-all hover:border-[#1a1a1a] hover:bg-black/[0.03] max-md:w-full">
                   See Examples
@@ -154,7 +166,7 @@ export default function HeroSection() {
           </div>
 
           {/* Right Image */}
-          <div className="flex-[1.1] relative flex items-end justify-center min-h-[600px] max-md:order-1 max-md:min-h-[420px]">
+          <div className="flex-[1.1] shrink-0 relative flex items-end justify-center min-h-[600px] max-md:order-1 max-md:min-h-[420px]">
             {/* bolder curvy gradient blob, ~half the card, colored per active theme */}
             <svg
               className="absolute pointer-events-none transition-opacity duration-500"

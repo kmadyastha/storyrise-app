@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {dummyBooks.map((b) => (
-          <Link key={b.id} href={b.status === "complete" ? `/create/${b.id}/export` : `/create/${b.id}/preview`}>
+          <Link key={b.id} href={`/create/${b.id}/preview`}>
             <Card padded={false} className="overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all">
               <div className="relative">
                 <IllustrationPlaceholder

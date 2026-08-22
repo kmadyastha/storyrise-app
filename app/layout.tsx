@@ -7,9 +7,10 @@ import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
 import "./globals.css";
 import { AppProvider } from "@/lib/app-context";
-import ConditionalTopNav from "@/components/nav/ConditionalTopNav";
+import Navbar from "@/components/nav/Navbar";
 import ProCelebration from "@/components/celebration/ProCelebration";
 import UpgradeModal from "@/components/paywall/UpgradeModal";
+import LoginModal from "@/components/auth/LoginModal";
 
 export const metadata: Metadata = {
   title: "StoryRise — Personalized storybooks, illustrated and alive",
@@ -22,10 +23,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full">
       <body className="min-h-full flex flex-col bg-paper text-ink antialiased">
         <AppProvider>
-          <ConditionalTopNav />
+          <Navbar />
           <div className="flex-1">{children}</div>
           <ProCelebration />
           <UpgradeModal />
+          <LoginModal />
         </AppProvider>
       </body>
     </html>

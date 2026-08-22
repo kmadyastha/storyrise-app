@@ -26,7 +26,7 @@ export default function QuoteStep({ params }: { params: Promise<{ bookId: string
         activeKey="quote"
         title="Ready to generate"
         subtitle="Free trial books render single-character framing automatically — no credit quote needed."
-        onBack={`/create/${bookId}/style`}
+        onBack={`/create/${bookId}/characters`}
         onNext={() => router.push(`/create/${bookId}/generating`)}
         nextLabel="Generate your free storybook"
       >
@@ -43,7 +43,7 @@ export default function QuoteStep({ params }: { params: Promise<{ bookId: string
       activeKey="quote"
       title="Your credit quote"
       subtitle="4 slides suggest multiple characters together. Choose how to render them before generating."
-      onBack={`/create/${bookId}/style`}
+      onBack={`/create/${bookId}/characters`}
       onNext={() => router.push(`/create/${bookId}/generating`)}
       nextLabel={`Generate storybook — ${total} credits`}
     >

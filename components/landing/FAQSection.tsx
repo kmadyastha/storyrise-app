@@ -39,10 +39,10 @@ export default function FAQSection() {
         <div className="inline-block px-[18px] py-1.5 bg-tangerine-tint text-tangerine-text rounded-full text-[13px] font-semibold uppercase tracking-wide mb-4">
           Questions
         </div>
-        <h2 className="font-fredoka font-bold text-4xl text-[#1a1a1a] mb-3 max-sm:text-[28px]">
+        <h2 className="font-fredoka font-bold text-5xl text-[#1a1a1a] mb-3 max-sm:text-[32px]">
           Frequently asked questions
         </h2>
-        <p className="text-[17px] text-[#777]">Everything you need to know before you start.</p>
+        <p className="text-[17px] font-medium text-[#5a5a5a]">Everything you need to know before you start.</p>
       </div>
 
       <div className="max-w-[760px] mx-auto space-y-3">
@@ -66,7 +66,7 @@ export default function FAQSection() {
                 />
               </button>
               {isOpen && (
-                <div className="px-6 pb-5 text-[15px] text-[#666] leading-relaxed">{faq.a}</div>
+                <div className="px-6 pb-5 text-[15px] font-medium text-[#5a5a5a] leading-relaxed">{faq.a}</div>
               )}
             </div>
           );

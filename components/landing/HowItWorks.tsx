@@ -41,14 +41,14 @@ export default function HowItWorks() {
 
   return (
     <section id="how-it-works" className="py-20 pb-[100px] px-10 bg-paper">
-      <div className="text-center max-w-[600px] mx-auto mb-[60px]">
+      <div className="text-center max-w-[760px] mx-auto mb-[60px]">
         <div className="inline-block px-[18px] py-1.5 bg-teal-tint text-teal-text rounded-full text-[13px] font-semibold uppercase tracking-wide mb-4">
           Simple Process
         </div>
         <h2 className="font-fredoka font-bold text-5xl text-[#1a1a1a] mb-4 max-sm:text-[32px]">
           From idea to book in minutes
         </h2>
-        <p className="text-lg text-[#777] leading-relaxed">
+        <p className="text-lg font-medium text-[#5a5a5a] leading-relaxed">
           No design skills needed. Just describe your story, review the characters, and export.
         </p>
       </div>
@@ -65,7 +65,7 @@ export default function HowItWorks() {
               {step.number}
             </div>
             <div className="font-fredoka font-semibold text-lg mb-2.5 text-[#1a1a1a]">{step.title}</div>
-            <div className="text-[14px] text-[#666] leading-[1.6]">{step.desc}</div>
+            <div className="text-[14px] font-medium text-[#5a5a5a] leading-[1.6]">{step.desc}</div>
           </div>
         ))}
       </div>

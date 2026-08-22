@@ -5,17 +5,116 @@ import { useRouter } from "next/navigation";
 import StepShell from "@/components/create/StepShell";
 import PaidBadge from "@/components/paywall/PaidBadge";
 import Card from "@/components/ui/Card";
-import { dummyStoryTable } from "@/lib/dummy-data";
+import { dummyStoryTable, StoryRow } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
-import { RefreshCw, Users, MapPin } from "lucide-react";
+import { RefreshCw, Users, MapPin, Pencil, Check, X, BookOpen, ImageIcon, Save } from "lucide-react";
+import clsx from "clsx";
+
+const NARRATION_MAX_WORDS = 40;
+const IMAGE_DESC_MAX_WORDS = 30;
+
+function wordCount(s: string) {
+  return s.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function EditableField({
+  value,
+  onSave,
+  maxWords,
+  label,
+  icon,
+  toneClass,
+  textClass,
+  disabled,
+  onLockedClick,
+}: {
+  value: string;
+  onSave: (v: string) => void;
+  maxWords: number;
+  label: string;
+  icon: React.ReactNode;
+  toneClass: string;
+  textClass: string;
+  disabled?: boolean;
+  onLockedClick?: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const count = wordCount(draft);
+  const overLimit = count > maxWords;
+
+  const startEdit = () => {
+    if (disabled) return onLockedClick?.();
+    setDraft(value);
+    setEditing(true);
+  };
+
+  const save = () => {
+    if (overLimit) return;
+    onSave(draft.trim());
+    setEditing(false);
+  };
+
+  return (
+    <div className={clsx("rounded-xl p-3", toneClass)}>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+          {icon} {label}
+        </span>
+        {!editing && (
+          <button onClick={startEdit} className="relative text-ink-soft hover:text-teal-text" aria-label={`Edit ${label}`}>
+            <Pencil size={12} />
+            {disabled && <PaidBadge inline />}
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div>
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={2}
+            autoFocus
+            className="w-full rounded-lg border border-line p-2 text-sm resize-none focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal"
+          />
+          <div className="flex items-center justify-between mt-1.5">
+            <span className={clsx("text-[11px]", overLimit ? "text-red-600 font-medium" : "text-ink-soft")}>
+              {count} / {maxWords} words
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditing(false)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-ink-soft hover:text-ink"
+              >
+                <X size={12} /> Cancel
+              </button>
+              <button
+                onClick={save}
+                disabled={overLimit}
+                className="inline-flex items-center gap-1 text-xs font-medium text-teal-text hover:text-teal disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Check size={12} /> Save line
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className={textClass}>{value}</p>
+      )}
+    </div>
+  );
+}
 
 export default function StoryStep({ params }: { params: Promise<{ bookId: string }> }) {
   const { bookId } = use(params);
   const router = useRouter();
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
+  const [rows, setRows] = useState<StoryRow[]>(dummyStoryTable);
   const [regenCount, setRegenCount] = useState(0);
   const [regenerating, setRegenerating] = useState(false);
+  const [savedToast, setSavedToast] = useState(false);
 
   const regenMessage =
     regenCount === 0
@@ -33,11 +132,22 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
     }, 900);
   };
 
+  const saveStory = () => {
+    if (isFree) return openUpgradeModal();
+    // Stores edits exactly as written — no AI call, nothing reworded.
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 2200);
+  };
+
+  const updateRow = (page: number, field: "narration" | "imageDescription", value: string) => {
+    setRows((prev) => prev.map((r) => (r.page === page ? { ...r, [field]: value } : r)));
+  };
+
   return (
     <StepShell
       activeKey="story"
       title="Lumo and the Lantern Forest"
-      subtitle="Review the story table below. Regenerate the whole story, or continue to your characters."
+      subtitle="Review the story below. Each page shows the narration and what the illustration will depict — edit either, or regenerate the whole thing."
       onBack="/create"
       onNext={() => router.push(`/create/${bookId}/characters`)}
       wide
@@ -46,31 +156,67 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
         <span className="text-xs text-ink-soft bg-paper border border-line rounded-full px-3 py-1.5">
           {regenerating ? "Regenerating story…" : regenMessage}
         </span>
-        <button
-          onClick={regenerate}
-          disabled={regenerating}
-          className="relative inline-flex items-center gap-1.5 text-sm font-medium text-teal-text hover:text-teal disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={regenerating ? "animate-spin" : ""} /> Regenerate story
-          {isFree && <PaidBadge inline />}
-        </button>
+        <div className="flex items-center gap-4">
+          {savedToast && (
+            <span className="text-xs font-medium text-green-text bg-green-tint rounded-full px-3 py-1.5">
+              Story saved as written
+            </span>
+          )}
+          <button
+            onClick={saveStory}
+            className="relative inline-flex items-center gap-1.5 text-sm font-medium text-ink hover:text-teal-text"
+          >
+            <Save size={14} /> Save story
+            {isFree && <PaidBadge inline />}
+          </button>
+          <button
+            onClick={regenerate}
+            disabled={regenerating}
+            className="relative inline-flex items-center gap-1.5 text-sm font-medium text-teal-text hover:text-teal disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={regenerating ? "animate-spin" : ""} /> Regenerate story
+            {isFree && <PaidBadge inline />}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">
-        {dummyStoryTable.map((row) => (
-          <Card key={row.page} padded={false} className="p-4 sm:p-5 flex gap-4">
-            <span className="shrink-0 w-8 h-8 rounded-full bg-teal-tint text-teal-text grid place-items-center text-xs font-medium">
-              {row.page}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm leading-relaxed mb-2.5">{row.narration}</p>
-              <p className="text-xs text-ink-soft italic mb-2.5">&ldquo;{row.imageDescription}&rdquo;</p>
-              <div className="flex flex-wrap gap-3 text-[11px] text-ink-soft">
-                <span className="flex items-center gap-1">
-                  <Users size={12} /> {row.characters.join(", ")}
-                  {row.multiCharacter && <span className="ml-1 text-tangerine-text bg-tangerine-tint rounded-full px-1.5">multi</span>}
-                </span>
-                <span className="flex items-center gap-1"><MapPin size={12} /> {row.setting}</span>
+        {rows.map((row) => (
+          <Card key={row.page} padded={false} className="p-4 sm:p-5">
+            <div className="flex gap-4">
+              <span className="shrink-0 w-8 h-8 rounded-full bg-teal-tint text-teal-text grid place-items-center text-xs font-medium">
+                {row.page}
+              </span>
+              <div className="flex-1 min-w-0 space-y-2.5">
+                <EditableField
+                  value={row.narration}
+                  onSave={(v) => updateRow(row.page, "narration", v)}
+                  maxWords={NARRATION_MAX_WORDS}
+                  label="Story"
+                  icon={<BookOpen size={11} />}
+                  toneClass="bg-teal-tint/40"
+                  textClass="text-sm leading-relaxed text-ink"
+                  disabled={isFree}
+                  onLockedClick={openUpgradeModal}
+                />
+                <EditableField
+                  value={row.imageDescription}
+                  onSave={(v) => updateRow(row.page, "imageDescription", v)}
+                  maxWords={IMAGE_DESC_MAX_WORDS}
+                  label="Image description"
+                  icon={<ImageIcon size={11} />}
+                  toneClass="bg-paper"
+                  textClass="text-xs italic text-ink-soft leading-relaxed"
+                  disabled={isFree}
+                  onLockedClick={openUpgradeModal}
+                />
+                <div className="flex flex-wrap gap-3 text-[11px] text-ink-soft pt-0.5">
+                  <span className="flex items-center gap-1">
+                    <Users size={12} /> {row.characters.join(", ")}
+                    {row.multiCharacter && <span className="ml-1 text-tangerine-text bg-tangerine-tint rounded-full px-1.5">multi</span>}
+                  </span>
+                  <span className="flex items-center gap-1"><MapPin size={12} /> {row.setting}</span>
+                </div>
               </div>
             </div>
           </Card>
@@ -79,7 +225,7 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
 
       {isFree && (
         <p className="text-xs text-ink-soft mt-4">
-          Editing individual rows and regenerating is a paid feature — tap the badge above to upgrade.
+          Editing individual lines, saving, and regenerating are paid features — tap any lock badge to upgrade.
         </p>
       )}
     </StepShell>

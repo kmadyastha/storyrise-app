@@ -13,23 +13,28 @@ interface AppState {
   setFreeTrialUsed: (v: boolean) => void;
   credits: number;
   setCredits: (n: number) => void;
+  addCredits: (n: number) => void;
   celebrationOpen: boolean;
   triggerCelebration: () => void;
   closeCelebration: () => void;
   upgradeModalOpen: boolean;
   openUpgradeModal: () => void;
   closeUpgradeModal: () => void;
+  loginModalOpen: boolean;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [loggedIn, setLoggedIn] = useState(true); // demo defaults to logged in
+  const [loggedIn, setLoggedIn] = useState(false); // fresh visitors start logged out
   const [tier, setTierState] = useState<Tier>("none");
   const [freeTrialUsed, setFreeTrialUsed] = useState(false);
   const [credits, setCredits] = useState(0);
   const [celebrationOpen, setCelebrationOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   const setTier = useCallback((t: Tier) => {
     setTierState(t);
@@ -43,10 +48,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCredits(grant[t]);
   }, []);
 
+  const addCredits = useCallback((n: number) => {
+    setCredits((c) => c + n);
+  }, []);
+
   const triggerCelebration = useCallback(() => setCelebrationOpen(true), []);
   const closeCelebration = useCallback(() => setCelebrationOpen(false), []);
   const openUpgradeModal = useCallback(() => setUpgradeModalOpen(true), []);
   const closeUpgradeModal = useCallback(() => setUpgradeModalOpen(false), []);
+  const openLoginModal = useCallback(() => setLoginModalOpen(true), []);
+  const closeLoginModal = useCallback(() => setLoginModalOpen(false), []);
 
   return (
     <AppContext.Provider
@@ -59,12 +70,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFreeTrialUsed,
         credits,
         setCredits,
+        addCredits,
         celebrationOpen,
         triggerCelebration,
         closeCelebration,
         upgradeModalOpen,
         openUpgradeModal,
         closeUpgradeModal,
+        loginModalOpen,
+        openLoginModal,
+        closeLoginModal,
       }}
     >
       {children}

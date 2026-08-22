@@ -101,6 +101,10 @@ h1, h2, h3, h4, .font-display {
 :root {
   --current-hero-bg: var(--color-teal-tint);
 }
+.hero-bridge-bg {
+  background: linear-gradient(to bottom, var(--current-hero-bg) 0%, var(--color-paper) 100%);
+  transition: background 1.8s ease;
+}
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
