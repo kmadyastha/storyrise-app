@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import StepShell from "@/components/create/StepShell";
 import FilterPill from "@/components/create/FilterPill";
 import PaidBadge from "@/components/paywall/PaidBadge";
-import { storyStyles, ageGroups, pageCountOptions, artStyles, settings } from "@/lib/dummy-data";
+import { storyStyles, ageGroups, artStyles, settings } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
-import { Sparkles, ChevronDown, ArrowRight, Image as ImageIcon, Lock } from "lucide-react";
+import { Sparkles, ArrowRight, Image as ImageIcon, Lock, Minus, Plus, SlidersHorizontal } from "lucide-react";
 import clsx from "clsx";
 
 const quickStarts = [
@@ -16,6 +16,40 @@ const quickStarts = [
   { label: "Family memory", idea: "Our family's weekend camping trip, turned into an adventure where the campfire tells stories back." },
   { label: "Surprise me", idea: "A curious kid discovers a hidden door in their backyard that leads somewhere nobody in the family has ever been." },
 ];
+
+const pagePresets = [
+  { count: 6, caption: "Free trial", free: true },
+  { count: 10, caption: null, free: false },
+  { count: 15, caption: null, free: false },
+  { count: 20, caption: null, free: false },
+  { count: 24, caption: "KDP minimum", free: false },
+];
+
+// shared look for popover options — a real bordered button, not a flat blend into white
+function OptionButton({
+  active,
+  onClick,
+  children,
+  className,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={clsx(
+        "text-sm rounded-lg px-3 py-2 border whitespace-nowrap transition-colors",
+        active ? "bg-teal text-white border-teal" : "bg-white border-line hover:border-teal hover:bg-teal-tint/40",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function CreateStep1() {
   const router = useRouter();
@@ -28,12 +62,16 @@ export default function CreateStep1() {
   const [pageCount, setPageCount] = useState(isFree ? 6 : 20);
   const [format, setFormat] = useState<"classic" | "immersive">("classic");
   const [layout, setLayout] = useState<"image-left" | "image-right">("image-left");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [artStyle, setArtStyle] = useState(artStyles[0]);
   const [setting, setSetting] = useState(settings[0]);
   const [rhyme, setRhyme] = useState(false);
 
-  const pageLabel = pageCountOptions.find((p) => p.count === pageCount)?.label.split(" —")[0] ?? String(pageCount);
+  const pageLabel = pagePresets.find((p) => p.count === pageCount)?.count ?? pageCount;
+
+  const bumpPages = (dir: 1 | -1) => {
+    if (isFree) return openUpgradeModal();
+    setPageCount((c) => Math.min(50, Math.max(25, c + dir)));
+  };
 
   return (
     <StepShell activeKey="create" title="" hideFooter wide>
@@ -61,19 +99,16 @@ export default function CreateStep1() {
               {(close) => (
                 <div className="grid grid-cols-2 gap-1.5">
                   {ageGroups.map((a) => (
-                    <button
+                    <OptionButton
                       key={a}
+                      active={age === a}
                       onClick={() => {
                         setAge(a);
                         close();
                       }}
-                      className={clsx(
-                        "text-sm rounded-lg px-3 py-2 transition-colors",
-                        age === a ? "bg-teal text-white" : "bg-paper hover:bg-teal-tint"
-                      )}
                     >
                       {a}
-                    </button>
+                    </OptionButton>
                   ))}
                 </div>
               )}
@@ -81,23 +116,21 @@ export default function CreateStep1() {
 
             <span className="text-line hidden sm:inline">|</span>
 
-            <FilterPill label="Style" value={style} panelClassName="w-56">
+            <FilterPill label="Style" value={style} panelClassName="w-72">
               {(close) => (
                 <div className="grid grid-cols-2 gap-1.5">
                   {storyStyles.map((s) => (
-                    <button
+                    <OptionButton
                       key={s}
+                      active={style === s}
                       onClick={() => {
                         setStyle(s);
                         close();
                       }}
-                      className={clsx(
-                        "text-sm rounded-lg px-3 py-2 transition-colors text-left",
-                        style === s ? "bg-teal text-white" : "bg-paper hover:bg-teal-tint"
-                      )}
+                      className="text-left"
                     >
                       {s}
-                    </button>
+                    </OptionButton>
                   ))}
                 </div>
               )}
@@ -105,93 +138,118 @@ export default function CreateStep1() {
 
             <span className="text-line hidden sm:inline">|</span>
 
-            <FilterPill label="Pages" value={pageLabel} panelClassName="w-72">
+            <FilterPill label="Pages" value={String(pageLabel)} panelClassName="w-80" align="right">
               {(close) => (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {pageCountOptions.map((p) => {
-                    const locked = isFree && !p.freeTrial;
-                    return (
-                      <button
-                        key={p.count}
-                        onClick={() => {
-                          if (locked) {
-                            openUpgradeModal();
-                          } else {
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {pagePresets.map((p) => {
+                      const locked = isFree && !p.free;
+                      return (
+                        <button
+                          key={p.count}
+                          onClick={() => {
+                            if (locked) return openUpgradeModal();
                             setPageCount(p.count);
                             close();
-                          }
-                        }}
-                        className={clsx(
-                          "relative flex items-center justify-center gap-1 text-xs rounded-lg px-2 py-2 transition-colors",
-                          locked
-                            ? "bg-paper text-ink-soft/50"
-                            : pageCount === p.count
-                            ? "bg-teal text-white"
-                            : "bg-paper hover:bg-teal-tint"
-                        )}
+                          }}
+                          className={clsx(
+                            "relative flex flex-col items-center justify-center gap-0.5 text-sm rounded-lg px-2 py-2 border transition-colors",
+                            locked
+                              ? "bg-white border-line text-ink-soft/50"
+                              : pageCount === p.count
+                              ? "bg-teal text-white border-teal"
+                              : p.caption
+                              ? "bg-tangerine-tint border-tangerine/30 hover:border-tangerine"
+                              : "bg-white border-line hover:border-teal hover:bg-teal-tint/40"
+                          )}
+                        >
+                          <span className="flex items-center gap-1 font-medium">
+                            {p.count}
+                            {locked && <Lock size={9} />}
+                          </span>
+                          {p.caption && (
+                            <span className={clsx("text-[9px] leading-none", pageCount === p.count ? "text-white/80" : "text-tangerine-text")}>
+                              {p.caption}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 border-t border-line">
+                    <p className="text-[11px] font-medium text-ink-soft mb-1.5">
+                      Or pick any exact count, 25–50
+                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => bumpPages(-1)}
+                        className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal disabled:opacity-40"
                       >
-                        {p.count}
-                        {locked && <Lock size={9} />}
+                        <Minus size={14} />
                       </button>
-                    );
-                  })}
+                      <span className="relative flex-1 text-center text-sm font-semibold">
+                        {pageCount >= 25 ? pageCount : 25}
+                        {isFree && <PaidBadge inline />}
+                      </span>
+                      <button
+                        onClick={() => bumpPages(1)}
+                        className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal disabled:opacity-40"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </FilterPill>
 
             <span className="text-line hidden sm:inline">|</span>
 
-            <FilterPill label="Format" value={format === "classic" ? "Classic" : "Immersive"} panelClassName="w-72">
-              {(close) => (
+            <FilterPill label="Format" value={format === "classic" ? "Classic" : "Immersive"} panelClassName="w-80" align="right">
+              {() => (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      onClick={() => setFormat("classic")}
-                      className={clsx(
-                        "text-left text-xs rounded-lg px-3 py-2.5",
-                        format === "classic" ? "bg-teal text-white" : "bg-paper hover:bg-teal-tint"
-                      )}
-                    >
+                    <OptionButton active={format === "classic"} onClick={() => setFormat("classic")} className="text-left !py-2.5">
                       <span className="font-medium block">Classic</span>
-                      <span className={format === "classic" ? "text-white/80" : "text-ink-soft"}>
+                      <span className={clsx("text-xs", format === "classic" ? "text-white/80" : "text-ink-soft")}>
                         Lower cost
                       </span>
-                    </button>
+                    </OptionButton>
+
                     <button
+                      type="button"
                       onClick={() => (isFree ? openUpgradeModal() : setFormat("immersive"))}
                       className={clsx(
-                        "relative text-left text-xs rounded-lg px-3 py-2.5",
+                        "relative text-left text-sm rounded-lg px-3 py-2.5 border whitespace-nowrap transition-colors",
                         isFree
-                          ? "bg-paper text-ink-soft/50"
+                          ? "bg-white border-line text-ink-soft/50"
                           : format === "immersive"
-                          ? "bg-teal text-white"
-                          : "bg-paper hover:bg-teal-tint"
+                          ? "bg-teal text-white border-teal"
+                          : "bg-white border-line hover:border-teal hover:bg-teal-tint/40"
                       )}
                     >
                       <span className="font-medium block">Immersive</span>
-                      <span className={format === "immersive" ? "text-white/80" : "text-ink-soft"}>
+                      <span className={clsx("text-xs", format === "immersive" ? "text-white/80" : "text-ink-soft")}>
                         Image + text
                       </span>
-                      {isFree && (
-                        <span className="absolute top-1.5 right-1.5">
-                          <PaidBadge inline />
-                        </span>
-                      )}
+                      {isFree && <PaidBadge />}
                     </button>
                   </div>
 
                   {format === "immersive" && !isFree && (
-                    <div>
+                    <div className="pt-1">
                       <p className="text-[11px] font-medium text-ink-soft mb-1.5">Layout</p>
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
+                          type="button"
                           onClick={() => setLayout("image-left")}
                           className={clsx(
-                            "rounded-lg p-2 border-2",
-                            layout === "image-left" ? "border-teal" : "border-line"
+                            "rounded-lg p-2 border-2 transition-colors",
+                            layout === "image-left" ? "border-teal bg-teal-tint/30" : "border-line hover:border-teal/50"
                           )}
                         >
-                          <div className="flex gap-1 h-8">
+                          <div className="flex gap-1 h-8 pointer-events-none">
                             <span className="flex-1 rounded bg-teal-tint grid place-items-center">
                               <ImageIcon size={12} className="text-teal-text" />
                             </span>
@@ -200,16 +258,17 @@ export default function CreateStep1() {
                               <span className="h-0.5 bg-line rounded-full w-2/3" />
                             </span>
                           </div>
-                          <span className="text-[10px] text-ink-soft block mt-1">Image left</span>
+                          <span className="text-[10px] text-ink-soft block mt-1 pointer-events-none">Image left</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => setLayout("image-right")}
                           className={clsx(
-                            "rounded-lg p-2 border-2",
-                            layout === "image-right" ? "border-teal" : "border-line"
+                            "rounded-lg p-2 border-2 transition-colors",
+                            layout === "image-right" ? "border-teal bg-teal-tint/30" : "border-line hover:border-teal/50"
                           )}
                         >
-                          <div className="flex gap-1 h-8">
+                          <div className="flex gap-1 h-8 pointer-events-none">
                             <span className="flex-1 rounded bg-paper flex flex-col justify-center gap-0.5 px-1">
                               <span className="h-0.5 bg-line rounded-full" />
                               <span className="h-0.5 bg-line rounded-full w-2/3" />
@@ -218,24 +277,53 @@ export default function CreateStep1() {
                               <ImageIcon size={12} className="text-teal-text" />
                             </span>
                           </div>
-                          <span className="text-[10px] text-ink-soft block mt-1">Image right</span>
+                          <span className="text-[10px] text-ink-soft block mt-1 pointer-events-none">Image right</span>
                         </button>
                       </div>
                     </div>
                   )}
-                  <button onClick={close} className="text-xs text-teal-text font-medium">
-                    Done
-                  </button>
+                </div>
+              )}
+            </FilterPill>
+          </div>
+
+          {/* Advanced options (left) + CTA (right) — always on their own row, CTA always flush right */}
+          <div className="flex items-center justify-between gap-3 mt-3">
+            <FilterPill label="" value="Advanced options" icon={<SlidersHorizontal size={14} className="text-ink-soft" />} panelClassName="w-80">
+              {() => (
+                <div className="space-y-4 text-left">
+                  <div>
+                    <label className="text-xs font-medium mb-2 block text-ink-soft">Illustration art style</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {artStyles.map((a) => (
+                        <OptionButton key={a} active={artStyle === a} onClick={() => setArtStyle(a)} className="!px-2.5 !py-1.5 text-xs">
+                          {a}
+                        </OptionButton>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-2 block text-ink-soft">Setting / backdrop</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {settings.map((s) => (
+                        <OptionButton key={s} active={setting === s} onClick={() => setSetting(s)} className="!px-2.5 !py-1.5 text-xs">
+                          {s}
+                        </OptionButton>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-medium text-ink-soft">
+                    <input type="checkbox" checked={rhyme} onChange={(e) => setRhyme(e.target.checked)} className="accent-teal" />
+                    Rhyme mode
+                  </label>
                 </div>
               )}
             </FilterPill>
 
-            <div className="flex-1" />
-
             <button
               onClick={() => router.push("/create/demo/story")}
               disabled={!idea.trim()}
-              className="inline-flex items-center gap-2 bg-teal text-white rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-text transition-colors"
+              className="inline-flex items-center gap-2 bg-teal text-white rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-text transition-colors shrink-0"
             >
               Create My Story Book
               <ArrowRight size={16} />
@@ -243,68 +331,34 @@ export default function CreateStep1() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mt-5 justify-center">
-          <span className="text-sm text-ink-soft mr-1">Not sure what to write? Try one:</span>
-          {quickStarts.map((q) => (
-            <button
-              key={q.label}
-              onClick={() => setIdea(q.idea)}
-              className="text-xs font-medium border border-line rounded-full px-3 py-1.5 hover:border-teal hover:bg-teal-tint transition-colors"
-            >
-              {q.label}
-            </button>
-          ))}
-        </div>
+        <div className="relative mt-8">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <span className="text-base text-ink font-medium mr-1">Not sure what to write? Try one:</span>
+            {quickStarts.map((q) => (
+              <button
+                key={q.label}
+                onClick={() => setIdea(q.idea)}
+                className="text-sm font-medium border border-line rounded-full px-4 py-2 bg-white hover:border-teal hover:bg-teal-tint transition-colors shadow-sm"
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
 
-        <div className="text-center mt-6">
-          <button
-            onClick={() => setAdvancedOpen((o) => !o)}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-ink"
-          >
-            Advanced options <ChevronDown size={15} className={clsx("transition-transform", advancedOpen && "rotate-180")} />
-          </button>
-          {advancedOpen && (
-            <div className="mt-4 max-w-xl mx-auto text-left space-y-5 bg-white rounded-2xl p-5 border border-line">
-              <div>
-                <label className="text-xs font-medium mb-2 block text-ink-soft">Illustration art style</label>
-                <div className="flex flex-wrap gap-2">
-                  {artStyles.map((a) => (
-                    <button
-                      key={a}
-                      onClick={() => setArtStyle(a)}
-                      className={clsx(
-                        "text-xs rounded-full px-3 py-1.5 border",
-                        artStyle === a ? "bg-teal text-white border-teal" : "border-line bg-white hover:border-teal"
-                      )}
-                    >
-                      {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium mb-2 block text-ink-soft">Setting / backdrop</label>
-                <div className="flex flex-wrap gap-2">
-                  {settings.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSetting(s)}
-                      className={clsx(
-                        "text-xs rounded-full px-3 py-1.5 border",
-                        setting === s ? "bg-teal text-white border-teal" : "border-line bg-white hover:border-teal"
-                      )}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-xs font-medium text-ink-soft">
-                <input type="checkbox" checked={rhyme} onChange={(e) => setRhyme(e.target.checked)} className="accent-teal" />
-                Rhyme mode
-              </label>
-            </div>
-          )}
+          {/* hand-drawn flourish pointing back at the chips */}
+          <div className="hidden lg:block absolute -right-4 top-10 rotate-[8deg] text-teal-text/70">
+            <svg width="70" height="46" viewBox="0 0 70 46" fill="none">
+              <path
+                d="M60 6 C 40 2, 12 10, 6 34"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                fill="none"
+              />
+              <path d="M6 34 L14 26 M6 34 L15 39" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            <span className="font-display text-sm italic -mt-1 block">Try an idea above</span>
+          </div>
         </div>
       </div>
     </StepShell>

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useRef, useState } from "react";
 import StepShell from "@/components/create/StepShell";
 import PaidBadge from "@/components/paywall/PaidBadge";
 import ExportPanel from "@/components/create/ExportPanel";
@@ -8,7 +8,7 @@ import CoverDrawer from "@/components/create/CoverDrawer";
 import IllustrationPlaceholder from "@/components/ui/IllustrationPlaceholder";
 import { dummyStoryTable } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
-import { RefreshCw, AlertTriangle, Download, Palette, Eye, Clock } from "lucide-react";
+import { RefreshCw, AlertTriangle, Download, Palette, Eye, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import clsx from "clsx";
 
 const colors = ["teal", "lime", "green", "tangerine"] as const;
@@ -22,6 +22,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
   const [exportOpen, setExportOpen] = useState(false);
   const [coverOpen, setCoverOpen] = useState(false);
   const [coverGenerated, setCoverGenerated] = useState(false);
+  const filmstripRef = useRef<HTMLDivElement>(null);
   const failedIndex = 2; // dummy: page 3 flagged as system-detected failure, auto-retried
 
   const page = dummyStoryTable[active];
@@ -33,11 +34,18 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
     setTimeout(() => setRegenerating(false), 1000);
   };
 
+  const goTo = (i: number) => {
+    const clamped = Math.max(0, Math.min(dummyStoryTable.length - 1, i));
+    setActive(clamped);
+    const thumb = filmstripRef.current?.children[clamped] as HTMLElement | undefined;
+    thumb?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  };
+
   return (
     <StepShell
       activeKey="preview"
       title="Preview your book"
-      subtitle="All your pages, at a glance. Regenerate a single image, then export or design a cover whenever you're ready."
+      subtitle="All your pages, in order below. Regenerate a single image, then export or design a cover whenever you're ready."
       onBack={`/create/${bookId}/quote`}
       hideFooter
       wide
@@ -59,60 +67,76 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
         </button>
       </div>
 
-      <div className="grid md:grid-cols-[448px_280px] gap-8 items-start">
-        {/* shrunk main image */}
-        <div>
-          <div className="relative rounded-2xl overflow-hidden border border-line max-w-md">
-            <IllustrationPlaceholder color={color} seed={active + 1} className={clsx(regenerating && "opacity-40")} />
-            <div className="absolute inset-x-3 bottom-3 bg-white/95 backdrop-blur rounded-lg px-3 py-2.5 text-xs">
-              {page.narration}
+      {/* big centered main image */}
+      <div className="max-w-2xl mx-auto">
+        <div className="relative rounded-2xl overflow-hidden border border-line">
+          <IllustrationPlaceholder color={color} seed={active + 1} className={clsx(regenerating && "opacity-40")} />
+          <div className="absolute inset-x-4 bottom-4 bg-white/95 backdrop-blur rounded-xl px-4 py-3 text-sm">
+            {page.narration}
+          </div>
+          {regenerating && (
+            <div className="absolute inset-0 grid place-items-center">
+              <RefreshCw size={22} className="animate-spin text-ink-soft" />
             </div>
-            {regenerating && (
-              <div className="absolute inset-0 grid place-items-center">
-                <RefreshCw size={20} className="animate-spin text-ink-soft" />
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mt-3">
-            <button
-              onClick={regenerate}
-              disabled={regenerating}
-              className="relative inline-flex items-center justify-center gap-1.5 text-xs font-medium rounded-full border border-line px-3.5 py-2 hover:border-teal disabled:opacity-50"
-            >
-              <RefreshCw size={13} /> Regenerate
-              {isFree && <PaidBadge inline />}
-            </button>
-            <span className="text-[11px] text-ink-soft">Page {active + 1} of {dummyStoryTable.length}</span>
-          </div>
+          )}
+
+          <button
+            onClick={() => goTo(active - 1)}
+            disabled={active === 0}
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-sm grid place-items-center disabled:opacity-0 transition-opacity"
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            onClick={() => goTo(active + 1)}
+            disabled={active === dummyStoryTable.length - 1}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-sm grid place-items-center disabled:opacity-0 transition-opacity"
+            aria-label="Next page"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
 
-        {/* all thumbnails visible at once — no scrolling needed to see how many pages exist */}
-        <div>
-          <p className="text-[11px] font-semibold text-ink-soft uppercase tracking-wide mb-2">
-            {dummyStoryTable.length} pages
-          </p>
-          <div className="grid grid-cols-3 md:grid-cols-2 gap-2">
-            {dummyStoryTable.map((row, i) => (
-              <button
-                key={row.page}
-                onClick={() => setActive(i)}
-                className={clsx(
-                  "relative aspect-[4/3] rounded-lg overflow-hidden border-2",
-                  active === i ? "border-teal" : "border-transparent"
-                )}
-              >
-                <IllustrationPlaceholder color={colors[i % colors.length]} seed={i + 1} className="w-full h-full" />
-                <span className="absolute bottom-1 left-1 text-[9px] font-medium bg-white/90 rounded px-1">
-                  {row.page}
+        <div className="flex items-center justify-between mt-3">
+          <button
+            onClick={regenerate}
+            disabled={regenerating}
+            className="relative inline-flex items-center justify-center gap-1.5 text-xs font-medium rounded-full border border-line px-3.5 py-2 hover:border-teal disabled:opacity-50"
+          >
+            <RefreshCw size={13} /> Regenerate
+            {isFree && <PaidBadge inline />}
+          </button>
+          <span className="text-[11px] text-ink-soft">Page {active + 1} of {dummyStoryTable.length}</span>
+        </div>
+      </div>
+
+      {/* horizontal scrollable filmstrip — scales fine at 20+ pages, unlike a stacked side column */}
+      <div className="mt-6">
+        <p className="text-[11px] font-semibold text-ink-soft uppercase tracking-wide mb-2">
+          {dummyStoryTable.length} pages
+        </p>
+        <div ref={filmstripRef} className="flex gap-2.5 overflow-x-auto thin-scroll pb-2">
+          {dummyStoryTable.map((row, i) => (
+            <button
+              key={row.page}
+              onClick={() => goTo(i)}
+              className={clsx(
+                "relative shrink-0 w-24 aspect-[4/3] rounded-lg overflow-hidden border-2 transition-colors",
+                active === i ? "border-teal" : "border-transparent hover:border-line"
+              )}
+            >
+              <IllustrationPlaceholder color={colors[i % colors.length]} seed={i + 1} className="w-full h-full" />
+              <span className="absolute bottom-1 left-1 text-[9px] font-medium bg-white/90 rounded px-1">
+                {row.page}
+              </span>
+              {i === failedIndex && (
+                <span className="absolute top-1 right-1 bg-white rounded-full p-0.5 text-tangerine-text">
+                  <AlertTriangle size={10} />
                 </span>
-                {i === failedIndex && (
-                  <span className="absolute top-1 right-1 bg-white rounded-full p-0.5 text-tangerine-text">
-                    <AlertTriangle size={10} />
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
