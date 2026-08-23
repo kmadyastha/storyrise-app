@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import textToSpeech from "@google-cloud/text-to-speech";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_VOICE } from "@/lib/voices";
+import { checkAndChargeCredits } from "@/lib/credits";
 
 export async function POST(request: Request) {
   const { pageId, voice } = await request.json();
@@ -16,6 +17,13 @@ export async function POST(request: Request) {
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  }
+
   const { data: page, error: pageError } = await supabase
     .from("story_pages")
     .select("*")
@@ -24,6 +32,13 @@ export async function POST(request: Request) {
 
   if (pageError || !page) {
     return NextResponse.json({ error: "Page not found" }, { status: 404 });
+  }
+
+  const { data: book } = await supabase.from("books").select("is_free_trial").eq("id", page.book_id).single();
+
+  const credit = await checkAndChargeCredits(user.id, page.book_id, "narration", book?.is_free_trial ?? false);
+  if (!credit.allowed) {
+    return NextResponse.json({ error: credit.reason }, { status: 402 });
   }
 
   let audioUrl: string;

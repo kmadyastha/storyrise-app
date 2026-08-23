@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+import { checkAndChargeCredits } from "@/lib/credits";
 
 export async function POST(request: Request) {
   const { bookId } = await request.json();
@@ -10,6 +11,13 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  }
 
   // Confirm the book exists and belongs to the caller — RLS enforces this
   // too, but a clear 404 up front makes client-side error handling simpler.
@@ -21,6 +29,11 @@ export async function POST(request: Request) {
 
   if (bookError || !book) {
     return NextResponse.json({ error: "Book not found" }, { status: 404 });
+  }
+
+  const credit = await checkAndChargeCredits(user.id, bookId, "story", book.is_free_trial);
+  if (!credit.allowed) {
+    return NextResponse.json({ error: credit.reason }, { status: 402 });
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
