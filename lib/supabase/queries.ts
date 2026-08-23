@@ -159,11 +159,11 @@ export async function generatePageImage(pageId: string): Promise<{ imageUrl: str
   return data;
 }
 
-export async function generateNarration(pageId: string): Promise<{ audioUrl: string }> {
+export async function generateNarration(pageId: string, voice?: string): Promise<{ audioUrl: string }> {
   const res = await fetch("/api/generate-narration", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pageId }),
+    body: JSON.stringify({ pageId, voice }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to generate narration");

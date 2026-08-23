@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
 import textToSpeech from "@google-cloud/text-to-speech";
 import { createClient } from "@/lib/supabase/server";
-
-// A small curated set — shown to the user as a picker before export,
-// rather than exposing the full raw list of Google voice IDs.
-export const NARRATOR_VOICES = [
-  { id: "en-US-Neural2-F", label: "Warm Narrator (female)" },
-  { id: "en-US-Neural2-D", label: "Warm Narrator (male)" },
-  { id: "en-US-Neural2-C", label: "Cheerful (female)" },
-  { id: "en-US-Neural2-J", label: "Gentle Bedtime Voice (male)" },
-] as const;
-
-const DEFAULT_VOICE = NARRATOR_VOICES[0].id;
+import { DEFAULT_VOICE } from "@/lib/voices";
 
 export async function POST(request: Request) {
   const { pageId, voice } = await request.json();
