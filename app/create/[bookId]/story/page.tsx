@@ -1,13 +1,14 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import StepShell from "@/components/create/StepShell";
 import PaidBadge from "@/components/paywall/PaidBadge";
 import Card from "@/components/ui/Card";
-import { dummyStoryTable, StoryRow } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
-import { RefreshCw, Users, MapPin, Pencil, Check, X, BookOpen, ImageIcon, Save } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { getBook, getStoryPages, updateStoryPage, generateStory, type Book, type StoryPage } from "@/lib/supabase/queries";
+import { RefreshCw, Users, MapPin, Pencil, Check, X, BookOpen, ImageIcon, Save, AlertCircle, Sparkles } from "lucide-react";
 import clsx from "clsx";
 
 const NARRATION_MAX_WORDS = 40;
@@ -111,10 +112,93 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
   const router = useRouter();
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
-  const [rows, setRows] = useState<StoryRow[]>(dummyStoryTable);
+
+  const [book, setBook] = useState<Book | null>(null);
+  const [rows, setRows] = useState<StoryPage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [regenCount, setRegenCount] = useState(0);
-  const [regenerating, setRegenerating] = useState(false);
   const [savedToast, setSavedToast] = useState(false);
+
+  const runGeneration = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const result = await generateStory(bookId);
+      setRows(
+        result.pages.map((p, i) => ({
+          id: `pending-${i}`, // replaced once we refetch real IDs below
+          book_id: bookId,
+          page_number: p.page,
+          narration: p.narration,
+          image_description: p.imageDescription,
+          characters: p.characters,
+          setting: p.setting,
+          multi_character: p.multiCharacter,
+          image_url: null,
+          audio_url: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }))
+      );
+      setBook((b) => (b ? { ...b, title: result.title } : b));
+      // Refetch to get the real row IDs (needed so per-line edits can save).
+      const supabase = createClient();
+      const { data: freshPages } = await getStoryPages(supabase, bookId);
+      if (freshPages) setRows(freshPages);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't generate your story — please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: bookData, error: bookErr } = await getBook(supabase, bookId);
+
+        if (cancelled) return;
+
+        if (bookErr || !bookData) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+
+        setBook(bookData);
+
+        const { data: pages } = await getStoryPages(supabase, bookId);
+        if (cancelled) return;
+
+        if (pages && pages.length > 0) {
+          setRows(pages);
+          setLoading(false);
+        } else {
+          setLoading(false);
+          await runGeneration();
+        }
+      } catch {
+        // Network-level failures (DNS, offline, etc.) reject rather than
+        // returning a clean {error} — without this catch, loading would
+        // hang forever instead of surfacing a usable state.
+        if (!cancelled) {
+          setNotFound(true);
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId]);
 
   const regenMessage =
     regenCount === 0
@@ -123,38 +207,66 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
       ? "1 free regeneration remaining"
       : "This is your final free regeneration — further fixes cost credits";
 
-  const regenerate = () => {
+  const regenerate = async () => {
     if (isFree) return openUpgradeModal();
-    setRegenerating(true);
-    setTimeout(() => {
-      setRegenerating(false);
-      setRegenCount((c) => c + 1);
-    }, 900);
+    await runGeneration();
+    setRegenCount((c) => c + 1);
   };
 
   const saveStory = () => {
     if (isFree) return openUpgradeModal();
-    // Stores edits exactly as written — no AI call, nothing reworded.
+    // Each line already persists itself the moment "Save line" is clicked —
+    // this button is a reassuring confirmation, not a second write.
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2200);
   };
 
-  const updateRow = (page: number, field: "narration" | "imageDescription", value: string) => {
-    setRows((prev) => prev.map((r) => (r.page === page ? { ...r, [field]: value } : r)));
+  const updateRow = async (rowId: string, field: "narration" | "image_description", value: string) => {
+    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, [field]: value } : r)));
+    const supabase = createClient();
+    await updateStoryPage(supabase, rowId, { [field]: value });
   };
+
+  if (notFound) {
+    return (
+      <StepShell activeKey="story" title="Story not found" onBack="/create" hideFooter>
+        <Card className="text-sm text-ink-soft">
+          We couldn&rsquo;t find that book — it may have been deleted, or the link is out of date.
+        </Card>
+      </StepShell>
+    );
+  }
+
+  if (loading || generating) {
+    return (
+      <StepShell activeKey="story" title={generating ? "Writing your story…" : "Loading…"} onBack="/create" hideFooter>
+        <div className="flex items-center gap-3 text-ink-soft text-sm">
+          <Sparkles size={16} className="animate-pulse text-teal-text" />
+          {generating ? "Claude is writing your story table — this takes a few seconds." : "Loading your book…"}
+        </div>
+      </StepShell>
+    );
+  }
 
   return (
     <StepShell
       activeKey="story"
-      title="Lumo and the Lantern Forest"
+      title={book?.title ?? "Your story"}
       subtitle="Review the story below. Each page shows the narration and what the illustration will depict — edit either, or regenerate the whole thing."
       onBack="/create"
       onNext={() => router.push(`/create/${bookId}/characters`)}
       wide
     >
+      {error && (
+        <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <span className="text-xs text-ink-soft bg-paper border border-line rounded-full px-3 py-1.5">
-          {regenerating ? "Regenerating story…" : regenMessage}
+          {regenMessage}
         </span>
         <div className="flex items-center gap-4">
           {savedToast && (
@@ -171,10 +283,9 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
           </button>
           <button
             onClick={regenerate}
-            disabled={regenerating}
             className="relative inline-flex items-center gap-1.5 text-sm font-medium text-teal-text hover:text-teal disabled:opacity-50"
           >
-            <RefreshCw size={14} className={regenerating ? "animate-spin" : ""} /> Regenerate story
+            <RefreshCw size={14} /> Regenerate story
             {isFree && <PaidBadge inline />}
           </button>
         </div>
@@ -182,15 +293,15 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
 
       <div className="space-y-3">
         {rows.map((row) => (
-          <Card key={row.page} padded={false} className="p-4 sm:p-5">
+          <Card key={row.id} padded={false} className="p-4 sm:p-5">
             <div className="flex gap-4">
               <span className="shrink-0 w-8 h-8 rounded-full bg-teal-tint text-teal-text grid place-items-center text-xs font-medium">
-                {row.page}
+                {row.page_number}
               </span>
               <div className="flex-1 min-w-0 space-y-2.5">
                 <EditableField
                   value={row.narration}
-                  onSave={(v) => updateRow(row.page, "narration", v)}
+                  onSave={(v) => updateRow(row.id, "narration", v)}
                   maxWords={NARRATION_MAX_WORDS}
                   label="Story"
                   icon={<BookOpen size={11} />}
@@ -200,8 +311,8 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
                   onLockedClick={openUpgradeModal}
                 />
                 <EditableField
-                  value={row.imageDescription}
-                  onSave={(v) => updateRow(row.page, "imageDescription", v)}
+                  value={row.image_description}
+                  onSave={(v) => updateRow(row.id, "image_description", v)}
                   maxWords={IMAGE_DESC_MAX_WORDS}
                   label="Image description"
                   icon={<ImageIcon size={11} />}
@@ -213,7 +324,7 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
                 <div className="flex flex-wrap gap-3 text-[11px] text-ink-soft pt-0.5">
                   <span className="flex items-center gap-1">
                     <Users size={12} /> {row.characters.join(", ")}
-                    {row.multiCharacter && <span className="ml-1 text-tangerine-text bg-tangerine-tint rounded-full px-1.5">multi</span>}
+                    {row.multi_character && <span className="ml-1 text-tangerine-text bg-tangerine-tint rounded-full px-1.5">multi</span>}
                   </span>
                   <span className="flex items-center gap-1"><MapPin size={12} /> {row.setting}</span>
                 </div>

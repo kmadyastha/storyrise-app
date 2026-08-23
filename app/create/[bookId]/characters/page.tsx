@@ -1,54 +1,113 @@
 "use client";
 
-import { use, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import StepShell from "@/components/create/StepShell";
 import PaidBadge from "@/components/paywall/PaidBadge";
 import Card from "@/components/ui/Card";
-import IllustrationPlaceholder from "@/components/ui/IllustrationPlaceholder";
-import { dummyCharacters } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
-import { RefreshCw, Upload, Undo2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { getCharacters, generateCharacterImage, type Character } from "@/lib/supabase/queries";
+import { RefreshCw, Upload, Undo2, AlertCircle, Sparkles } from "lucide-react";
 
 export default function CharactersStep({ params }: { params: Promise<{ bookId: string }> }) {
   const { bookId } = use(params);
   const router = useRouter();
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
+
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [loading, setLoading] = useState(true);
   const [regenCounts, setRegenCounts] = useState<Record<string, number>>({});
-  const [regenerating, setRegenerating] = useState<string | null>(null);
-  const [customImages, setCustomImages] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const generateFor = async (id: string) => {
+    setBusy(id);
+    setErrors((e) => ({ ...e, [id]: "" }));
+    try {
+      const { imageUrl } = await generateCharacterImage(id);
+      setCharacters((prev) => prev.map((c) => (c.id === id ? { ...c, reference_image_url: imageUrl, custom_image_url: null } : c)));
+    } catch (err) {
+      setErrors((e) => ({ ...e, [id]: err instanceof Error ? err.message : "Generation failed" }));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await getCharacters(supabase, bookId);
+        const list = data ?? [];
+        setCharacters(list);
+        setLoading(false);
+
+        // Auto-generate reference images for anyone who doesn't have one yet.
+        for (const c of list) {
+          if (!c.reference_image_url && !c.custom_image_url) {
+            await generateFor(c.id);
+          }
+        }
+      } catch {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId]);
 
   const regenerateImage = (id: string) => {
     if (isFree) return openUpgradeModal();
-    setRegenerating(id);
-    setTimeout(() => {
-      setRegenerating(null);
-      setRegenCounts((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
-      // A fresh AI generation replaces any custom upload for that character.
-      setCustomImages((c) => {
-        const next = { ...c };
-        delete next[id];
-        return next;
-      });
-    }, 900);
+    setRegenCounts((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
+    generateFor(id);
   };
 
-  const handleUpload = (id: string, file: File | undefined) => {
+  const handleUpload = async (id: string, file: File | undefined) => {
     if (!file) return;
     if (isFree) return openUpgradeModal();
-    const url = URL.createObjectURL(file);
-    setCustomImages((c) => ({ ...c, [id]: url }));
+
+    setBusy(id);
+    setErrors((e) => ({ ...e, [id]: "" }));
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop() || "png";
+      const path = `characters/custom-${id}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("book-assets").upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("book-assets").getPublicUrl(path);
+      const { error: updateError } = await supabase
+        .from("characters")
+        .update({ custom_image_url: data.publicUrl })
+        .eq("id", id);
+      if (updateError) throw updateError;
+
+      setCharacters((prev) => prev.map((c) => (c.id === id ? { ...c, custom_image_url: data.publicUrl } : c)));
+    } catch (err) {
+      setErrors((e) => ({ ...e, [id]: err instanceof Error ? err.message : "Upload failed" }));
+    } finally {
+      setBusy(null);
+    }
   };
 
-  const revertToAI = (id: string) => {
-    setCustomImages((c) => {
-      const next = { ...c };
-      delete next[id];
-      return next;
-    });
+  const revertToAI = async (id: string) => {
+    const supabase = createClient();
+    await supabase.from("characters").update({ custom_image_url: null }).eq("id", id);
+    setCharacters((prev) => prev.map((c) => (c.id === id ? { ...c, custom_image_url: null } : c)));
   };
+
+  if (loading) {
+    return (
+      <StepShell activeKey="characters" title="Loading…" onBack={`/create/${bookId}/story`} hideFooter>
+        <div className="flex items-center gap-3 text-ink-soft text-sm">
+          <Sparkles size={16} className="animate-pulse text-teal-text" />
+          Loading your characters…
+        </div>
+      </StepShell>
+    );
+  }
 
   return (
     <StepShell
@@ -60,30 +119,28 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
       wide
     >
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {dummyCharacters.map((c) => {
+        {characters.map((c) => {
           const count = regenCounts[c.id] ?? 0;
           const freeUsed = count >= 1;
-          const isRegenerating = regenerating === c.id;
-          const customImage = customImages[c.id];
+          const isBusy = busy === c.id;
+          const activeImage = c.custom_image_url || c.reference_image_url;
 
           return (
             <Card key={c.id} padded={false} className="overflow-hidden">
-              <div className="relative">
-                {customImage ? (
-                  <img src={customImage} alt={c.name} className="w-full aspect-[4/3] object-cover" />
+              <div className="relative aspect-[4/3] bg-paper">
+                {activeImage ? (
+                  <img src={activeImage} alt={c.name} className={`w-full h-full object-cover ${isBusy ? "opacity-40" : ""}`} />
                 ) : (
-                  <IllustrationPlaceholder
-                    color={c.color as "teal" | "lime" | "green" | "tangerine"}
-                    seed={c.name.length}
-                    className={isRegenerating ? "opacity-40" : ""}
-                  />
+                  <div className="w-full h-full grid place-items-center text-ink-soft text-xs">
+                    {isBusy ? "Generating…" : "No image yet"}
+                  </div>
                 )}
-                {isRegenerating && (
+                {isBusy && (
                   <div className="absolute inset-0 grid place-items-center">
                     <RefreshCw size={20} className="animate-spin text-ink-soft" />
                   </div>
                 )}
-                {customImage && (
+                {c.custom_image_url && (
                   <span className="absolute top-2 left-2 text-[10px] font-medium bg-white/90 rounded-full px-2 py-0.5">
                     Custom image
                   </span>
@@ -98,10 +155,17 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
                 </div>
                 <p className="text-xs text-ink-soft leading-relaxed mb-3">{c.description}</p>
 
+                {errors[c.id] && (
+                  <div className="flex items-start gap-1.5 text-[11px] text-red-600 bg-red-50 border border-red-100 rounded-lg p-2 mb-3">
+                    <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                    <span>{errors[c.id]}</span>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                   <button
                     onClick={() => regenerateImage(c.id)}
-                    disabled={isRegenerating}
+                    disabled={isBusy}
                     className="relative inline-flex items-center gap-1.5 text-xs font-medium text-teal-text hover:text-teal disabled:opacity-50"
                   >
                     <RefreshCw size={12} />
@@ -109,7 +173,7 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
                     {isFree && <PaidBadge inline />}
                   </button>
 
-                  {customImage ? (
+                  {c.custom_image_url ? (
                     <button
                       onClick={() => revertToAI(c.id)}
                       className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft hover:text-ink"

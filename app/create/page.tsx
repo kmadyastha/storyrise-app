@@ -7,7 +7,9 @@ import FilterPill from "@/components/create/FilterPill";
 import PaidBadge from "@/components/paywall/PaidBadge";
 import { storyStyles, ageGroups, artStyles, settings } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
-import { Sparkles, ArrowRight, Image as ImageIcon, Lock, Minus, Plus, SlidersHorizontal } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { createBook } from "@/lib/supabase/queries";
+import { Sparkles, ArrowRight, Image as ImageIcon, Lock, Minus, Plus, SlidersHorizontal, AlertCircle } from "lucide-react";
 import clsx from "clsx";
 
 const quickStarts = [
@@ -53,8 +55,10 @@ function OptionButton({
 
 export default function CreateStep1() {
   const router = useRouter();
-  const { tier, openUpgradeModal } = useApp();
+  const { tier, openUpgradeModal, user, openLoginModal } = useApp();
   const isFree = tier === "none";
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const [idea, setIdea] = useState("");
   const [style, setStyle] = useState<string>(storyStyles[0]);
@@ -67,6 +71,40 @@ export default function CreateStep1() {
   const [rhyme, setRhyme] = useState(false);
 
   const pageLabel = pagePresets.find((p) => p.count === pageCount)?.count ?? pageCount;
+
+  const handleCreate = async () => {
+    if (!idea.trim()) return;
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+
+    setCreating(true);
+    setCreateError(null);
+
+    const supabase = createClient();
+    const { data: book, error } = await createBook(supabase, user.id, {
+      idea: idea.trim(),
+      style,
+      ageGroup: age,
+      pageCount,
+      format,
+      layout,
+      artStyle,
+      setting,
+      rhymeMode: rhyme,
+      isFreeTrial: isFree,
+    });
+
+    setCreating(false);
+
+    if (error || !book) {
+      setCreateError(error?.message ?? "Couldn't create your book — please try again.");
+      return;
+    }
+
+    router.push(`/create/${book.id}/story`);
+  };
 
   const bumpPages = (dir: 1 | -1) => {
     if (isFree) return openUpgradeModal();
@@ -321,14 +359,21 @@ export default function CreateStep1() {
             </FilterPill>
 
             <button
-              onClick={() => router.push("/create/demo/story")}
-              disabled={!idea.trim()}
+              onClick={handleCreate}
+              disabled={!idea.trim() || creating}
               className="inline-flex items-center gap-2 bg-teal text-white rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-text transition-colors shrink-0"
             >
-              Create My Story Book
-              <ArrowRight size={16} />
+              {creating ? "Creating…" : "Create My Story Book"}
+              {!creating && <ArrowRight size={16} />}
             </button>
           </div>
+
+          {createError && (
+            <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3 mt-3">
+              <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <span>{createError}</span>
+            </div>
+          )}
         </div>
 
         <div className="relative mt-8">
