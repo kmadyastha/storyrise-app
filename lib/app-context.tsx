@@ -1,19 +1,22 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 export type Tier = "none" | "starter" | "growth" | "pro" | "pro_max";
 
 interface AppState {
   loggedIn: boolean;
-  setLoggedIn: (v: boolean) => void;
+  authLoading: boolean;
+  user: User | null;
   tier: Tier;
-  setTier: (t: Tier) => void;
+  setTier: (t: Tier) => Promise<void>;
   freeTrialUsed: boolean;
-  setFreeTrialUsed: (v: boolean) => void;
+  setFreeTrialUsed: (v: boolean) => Promise<void>;
   credits: number;
-  setCredits: (n: number) => void;
-  addCredits: (n: number) => void;
+  setCredits: (n: number) => Promise<void>;
+  addCredits: (n: number) => Promise<void>;
   celebrationOpen: boolean;
   triggerCelebration: () => void;
   closeCelebration: () => void;
@@ -27,30 +30,107 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
+const CREDIT_GRANTS: Record<Tier, number> = {
+  none: 0,
+  starter: 60,
+  growth: 130,
+  pro: 210,
+  pro_max: 360,
+};
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [loggedIn, setLoggedIn] = useState(false); // fresh visitors start logged out
+  const [supabase] = useState(() => createClient());
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [tier, setTierState] = useState<Tier>("none");
-  const [freeTrialUsed, setFreeTrialUsed] = useState(false);
-  const [credits, setCredits] = useState(0);
+  const [freeTrialUsed, setFreeTrialUsedState] = useState(false);
+  const [credits, setCreditsState] = useState(0);
   const [celebrationOpen, setCelebrationOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
-  const setTier = useCallback((t: Tier) => {
-    setTierState(t);
-    const grant: Record<Tier, number> = {
-      none: 0,
-      starter: 60,
-      growth: 130,
-      pro: 210,
-      pro_max: 360,
-    };
-    setCredits(grant[t]);
+  const loadProfile = useCallback(
+    async (userId: string) => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("tier, credits, free_trial_used")
+        .eq("id", userId)
+        .single();
+      if (data) {
+        setTierState((data.tier as Tier) ?? "none");
+        setCreditsState(data.credits ?? 0);
+        setFreeTrialUsedState(data.free_trial_used ?? false);
+      }
+    },
+    [supabase]
+  );
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) loadProfile(session.user.id);
+      setAuthLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        loadProfile(session.user.id);
+      } else {
+        setTierState("none");
+        setCreditsState(0);
+        setFreeTrialUsedState(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addCredits = useCallback((n: number) => {
-    setCredits((c) => c + n);
-  }, []);
+  const setTier = useCallback(
+    async (t: Tier) => {
+      const grantedCredits = CREDIT_GRANTS[t];
+      setTierState(t);
+      setCreditsState(grantedCredits);
+      if (user) {
+        await supabase.from("profiles").update({ tier: t, credits: grantedCredits }).eq("id", user.id);
+      }
+    },
+    [user, supabase]
+  );
+
+  const setCredits = useCallback(
+    async (n: number) => {
+      setCreditsState(n);
+      if (user) {
+        await supabase.from("profiles").update({ credits: n }).eq("id", user.id);
+      }
+    },
+    [user, supabase]
+  );
+
+  const addCredits = useCallback(
+    async (n: number) => {
+      const next = credits + n;
+      setCreditsState(next);
+      if (user) {
+        await supabase.from("profiles").update({ credits: next }).eq("id", user.id);
+      }
+    },
+    [user, supabase, credits]
+  );
+
+  const setFreeTrialUsed = useCallback(
+    async (v: boolean) => {
+      setFreeTrialUsedState(v);
+      if (user) {
+        await supabase.from("profiles").update({ free_trial_used: v }).eq("id", user.id);
+      }
+    },
+    [user, supabase]
+  );
 
   const triggerCelebration = useCallback(() => setCelebrationOpen(true), []);
   const closeCelebration = useCallback(() => setCelebrationOpen(false), []);
@@ -62,8 +142,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        loggedIn,
-        setLoggedIn,
+        loggedIn: !!user,
+        authLoading,
+        user,
         tier,
         setTier,
         freeTrialUsed,

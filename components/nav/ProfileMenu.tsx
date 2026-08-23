@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/app-context";
+import { createClient } from "@/lib/supabase/client";
 import { Sparkles, BookOpen, User, LogOut } from "lucide-react";
 
 const tierLabel: Record<string, string> = {
@@ -15,7 +16,7 @@ const tierLabel: Record<string, string> = {
 };
 
 export default function ProfileMenu() {
-  const { tier, credits, openUpgradeModal, setLoggedIn, setTier } = useApp();
+  const { tier, credits, openUpgradeModal, user } = useApp();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -28,12 +29,14 @@ export default function ProfileMenu() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const logOut = () => {
+  const logOut = async () => {
     setOpen(false);
-    setLoggedIn(false);
-    setTier("none");
+    const supabase = createClient();
+    await supabase.auth.signOut();
     router.push("/");
   };
+
+  const initial = user?.email?.[0]?.toUpperCase() ?? "?";
 
   return (
     <div className="relative" ref={ref}>
@@ -42,14 +45,15 @@ export default function ProfileMenu() {
         className="w-9 h-9 rounded-full bg-[#1a1a1a] text-white grid place-items-center text-sm font-semibold shrink-0"
         aria-label="Account menu"
       >
-        K
+        {initial}
       </button>
 
       {open && (
         <div className="absolute right-0 top-[calc(100%+8px)] w-64 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-black/[0.06] overflow-hidden z-50">
           <div className="p-4 border-b border-black/[0.06]">
             <p className="text-xs text-ink-soft mb-1">Signed in as</p>
-            <p className="text-sm font-fredoka font-semibold text-[#1a1a1a]">
+            <p className="text-sm font-fredoka font-semibold text-[#1a1a1a] truncate">{user?.email}</p>
+            <p className="text-xs text-ink-soft mt-1">
               {tierLabel[tier]} plan · {credits} credits
             </p>
           </div>

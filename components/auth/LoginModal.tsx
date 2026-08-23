@@ -1,34 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useApp } from "@/lib/app-context";
-import { X, Mail, Sparkles } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { X, Mail, Sparkles, AlertCircle } from "lucide-react";
 
 export default function LoginModal() {
-  const { loginModalOpen, closeLoginModal, setLoggedIn } = useApp();
+  const { loginModalOpen, closeLoginModal, loggedIn } = useApp();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // If sign-in completes in another tab (the user clicked the emailed link
+  // there), this tab's session updates automatically via Supabase's
+  // onAuthStateChange — pick that up and close the modal here too.
+  useEffect(() => {
+    if (loggedIn && loginModalOpen) {
+      closeLoginModal();
+      setSent(false);
+      router.push("/create");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loggedIn]);
 
   if (!loginModalOpen) return null;
 
   const close = () => {
     closeLoginModal();
-    setTimeout(() => setSent(false), 300);
+    setTimeout(() => {
+      setSent(false);
+      setError(null);
+    }, 300);
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSending(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { error: authError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    setSending(false);
+    if (authError) {
+      setError(authError.message);
+      return;
+    }
     setSent(true);
-    // Simulated magic-link sign-in — real Supabase auth wiring happens later.
-    setTimeout(() => {
-      setLoggedIn(true);
-      closeLoginModal();
-      setSent(false);
-      router.push("/create");
-    }, 1000);
   };
 
   return (
@@ -106,7 +133,8 @@ export default function LoginModal() {
               <div className="bg-teal-tint border border-teal/20 rounded-2xl p-4 text-sm">
                 <p className="font-fredoka font-semibold mb-1">Check your inbox</p>
                 <p className="text-[#5a5a5a]">
-                  We sent a link to {email || "your email"}. (Preview: signing you in automatically…)
+                  We sent a real sign-in link to <strong>{email}</strong>. Click it to finish logging in — this tab
+                  will pick up automatically once you do.
                 </p>
               </div>
             ) : (
@@ -125,11 +153,20 @@ export default function LoginModal() {
                     />
                   </div>
                 </div>
+
+                {error && (
+                  <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3">
+                    <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full bg-[#1a1a1a] text-white py-3.5 rounded-full font-fredoka font-semibold text-[15px] cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+                  disabled={sending}
+                  className="w-full bg-[#1a1a1a] text-white py-3.5 rounded-full font-fredoka font-semibold text-[15px] cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                 >
-                  Send magic link
+                  {sending ? "Sending…" : "Send magic link"}
                 </button>
               </form>
             )}
