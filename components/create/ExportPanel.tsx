@@ -3,28 +3,69 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import PaidBadge from "@/components/paywall/PaidBadge";
-import { exportOptions } from "@/lib/dummy-data";
+import { exportOptions, bookSizes } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
-import { Download, Droplet, X } from "lucide-react";
+import { Download, Droplet, X, AlertCircle, Clock } from "lucide-react";
 import clsx from "clsx";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  bookId: string;
   format: "classic" | "immersive";
 }
 
-export default function ExportPanel({ open, onClose, format }: Props) {
+// Only these two actually generate a real file today — everything else
+// (video, audiobook, KDP, Etsy) needs the Fly.io worker (Phase 5) or the
+// print-spec work (Phase 4) and isn't wired yet. Shown as "Coming soon"
+// rather than faking a download, per/paid or not.
+const LIVE_EXPORTS = new Set(["pdf", "pptx"]);
+
+export default function ExportPanel({ open, onClose, bookId, format }: Props) {
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
-  const [downloaded, setDownloaded] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [bookSizeId, setBookSizeId] = useState<string>(bookSizes.find((s) => "default" in s && s.default)?.id ?? bookSizes[0].id);
 
   const isLocked = (id: string) => isFree && !["pdf", "pptx"].includes(id);
 
-  const handleExport = (id: string) => {
+  const handleExport = async (id: string) => {
     if (isLocked(id)) return openUpgradeModal();
-    setDownloaded(id);
-    setTimeout(() => setDownloaded(null), 1800);
+    if (!LIVE_EXPORTS.has(id)) return; // "Coming soon" cards aren't clickable — see disabled state below
+
+    setError(null);
+    setDownloading(id);
+    try {
+      const res = await fetch(`/api/export/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookId, bookSizeId }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Export failed — please try again.");
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get("content-disposition") || "";
+      const match = disposition.match(/filename="(.+)"/);
+      const filename = match?.[1] || `storybook.${id}`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Export failed — please try again.");
+    } finally {
+      setDownloading(null);
+    }
   };
 
   return (
@@ -38,7 +79,7 @@ export default function ExportPanel({ open, onClose, format }: Props) {
           onClick={onClose}
         >
           <motion.div
-            className="bg-white rounded-[24px] w-full max-w-2xl p-6 shadow-2xl"
+            className="bg-white rounded-[24px] w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.94, opacity: 0, y: 10 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0 }}
@@ -51,18 +92,41 @@ export default function ExportPanel({ open, onClose, format }: Props) {
               </button>
             </div>
 
+            {/* Trim size — applies to PDF/PPTX now, will apply to KDP/Etsy in Phase 4 too */}
+            <div className="mb-5">
+              <label className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-1.5 block">
+                Book size / trim
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {bookSizes.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setBookSizeId(s.id)}
+                    className={clsx(
+                      "text-xs rounded-full px-3 py-1.5 border transition-colors",
+                      bookSizeId === s.id ? "bg-teal text-white border-teal" : "border-line hover:border-teal"
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-3">
               {exportOptions.map((opt) => {
                 const disabledByFormat = opt.immersiveOnly && format !== "immersive";
                 const locked = isLocked(opt.id) && !disabledByFormat;
+                const live = LIVE_EXPORTS.has(opt.id);
+                const disabled = disabledByFormat || (!live && !locked);
                 return (
                   <button
                     key={opt.id}
-                    onClick={() => !disabledByFormat && handleExport(opt.id)}
-                    disabled={disabledByFormat}
+                    onClick={() => !disabled && handleExport(opt.id)}
+                    disabled={disabled || downloading === opt.id}
                     className={clsx(
                       "relative text-left rounded-2xl border p-4 transition-colors",
-                      disabledByFormat
+                      disabled
                         ? "opacity-50 border-line cursor-not-allowed"
                         : "border-line hover:border-teal hover:bg-teal-tint/30"
                     )}
@@ -77,13 +141,26 @@ export default function ExportPanel({ open, onClose, format }: Props) {
                         <Droplet size={10} /> Watermarked
                       </span>
                     )}
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-text">
-                      <Download size={13} /> {downloaded === opt.id ? "Downloaded!" : "Export"}
-                    </span>
+                    {!live && !locked ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
+                        <Clock size={13} /> Coming soon
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-text">
+                        <Download size={13} /> {downloading === opt.id ? "Preparing…" : "Export"}
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
+
+            {error && (
+              <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3 mt-4">
+                <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <p className="text-[11px] text-ink-soft mt-4">
               Download or save your book — it will be automatically deleted 30 days from generation. No backups are kept.

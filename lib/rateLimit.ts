@@ -10,6 +10,8 @@ const ROUTE_LIMITS: Record<string, number> = {
   "generate-page-image": 40,
   "generate-narration": 40,
   "generate-cover": 15,
+  "export-pdf": 10,
+  "export-pptx": 10,
 };
 
 export async function checkRateLimit(

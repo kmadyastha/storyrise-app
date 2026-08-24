@@ -308,7 +308,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
         </p>
       </div>
 
-      <ExportPanel open={exportOpen} onClose={() => setExportOpen(false)} format="immersive" />
+      <ExportPanel open={exportOpen} onClose={() => setExportOpen(false)} bookId={bookId} format={book?.format ?? "classic"} />
       <CoverDrawer
         open={coverOpen}
         onClose={() => setCoverOpen(false)}

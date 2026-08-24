@@ -116,6 +116,15 @@ export const artStyles = [
 
 export const settings = ["Village", "City", "Forest", "Space", "Underwater", "Fantasy kingdom"];
 
+// Trim sizes offered at export time (PDF/PPTX now; KDP/Etsy reuse the same
+// list in Phase 4). Points are at 72pt/inch, used directly by pdf-lib.
+export const bookSizes = [
+  { id: "8.5x8.5", label: "8.5\" × 8.5\" — Square (KDP standard)", widthIn: 8.5, heightIn: 8.5, default: true },
+  { id: "8x8", label: "8\" × 8\" — Square (compact)", widthIn: 8, heightIn: 8 },
+  { id: "6x9", label: "6\" × 9\" — Novel-style", widthIn: 6, heightIn: 9 },
+  { id: "8.5x11", label: "8.5\" × 11\" — Portrait, large print", widthIn: 8.5, heightIn: 11 },
+] as const;
+
 export interface DummyBook {
   id: string;
   title: string;
