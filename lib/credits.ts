@@ -15,24 +15,15 @@ interface CheckResult {
 }
 
 /**
- * The single gate every paid AI route must pass through before doing the
- * expensive work. Reads the user's REAL balance from the database (never
- * trusts anything the client claims), and — for paid tier — deducts credits
- * and logs the spend atomically-enough for our purposes before returning.
- *
- * Free-trial books get story/character/page generation at no charge (already
- * bounded server-side by the free-trial page/format limits enforced via a DB
- * trigger on the books table) but narration is paid-only, matching what the
- * UI has always said.
+ * Cheap read-only check — call this BEFORE doing the expensive AI work, so
+ * someone with no credits (or on free trial trying narration) never causes
+ * a real API call in the first place.
  */
-export async function checkAndChargeCredits(
+export async function precheckCredits(
   userId: string,
-  bookId: string,
   operation: CreditOperation,
   isFreeTrial: boolean
 ): Promise<CheckResult> {
-  const admin = createAdminClient();
-
   if (isFreeTrial) {
     if (operation === "narration") {
       return { allowed: false, reason: "Narration isn't available on the free trial — upgrade to unlock it." };
@@ -41,14 +32,33 @@ export async function checkAndChargeCredits(
   }
 
   const cost = CREDIT_COST[operation];
+  const admin = createAdminClient();
   const { data: profile } = await admin.from("profiles").select("credits").eq("id", userId).single();
-
   const balance = profile?.credits ?? 0;
-  if (balance < cost) {
-    return { allowed: false, reason: `This costs ${cost} credit${cost > 1 ? "s" : ""} — you have ${balance}. Upgrade or top up to continue.` };
-  }
 
-  const newBalance = balance - cost;
+  if (balance < cost) {
+    return {
+      allowed: false,
+      reason: `This costs ${cost} credit${cost > 1 ? "s" : ""} — you have ${balance}. Upgrade or top up to continue.`,
+    };
+  }
+  return { allowed: true };
+}
+
+/**
+ * Actually deducts credits and logs the spend — call this ONLY after the AI
+ * call has genuinely succeeded and produced something usable. Free-trial
+ * operations are a no-op here (nothing to deduct).
+ */
+export async function chargeCredits(userId: string, bookId: string, operation: CreditOperation, isFreeTrial: boolean) {
+  if (isFreeTrial) return;
+
+  const cost = CREDIT_COST[operation];
+  const admin = createAdminClient();
+  const { data: profile } = await admin.from("profiles").select("credits").eq("id", userId).single();
+  const balance = profile?.credits ?? 0;
+  const newBalance = Math.max(0, balance - cost);
+
   await admin.from("profiles").update({ credits: newBalance }).eq("id", userId);
   await admin.from("credit_ledger").insert({
     user_id: userId,
@@ -56,6 +66,4 @@ export async function checkAndChargeCredits(
     amount: -cost,
     reason: operation,
   });
-
-  return { allowed: true };
 }

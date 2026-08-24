@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
-import { checkAndChargeCredits } from "@/lib/credits";
+import { precheckCredits, chargeCredits } from "@/lib/credits";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { validateAIInput, isLikelyRefusal, ValidationError, MAX_LENGTHS } from "@/lib/validation";
 
 export async function POST(request: Request) {
   const { bookId } = await request.json();
@@ -19,28 +21,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
+  const rate = await checkRateLimit(user.id, "generate-story");
+  if (!rate.allowed) {
+    return NextResponse.json({ error: "Too many requests — please wait a moment and try again." }, { status: 429 });
+  }
+
   // Confirm the book exists and belongs to the caller — RLS enforces this
   // too, but a clear 404 up front makes client-side error handling simpler.
-  const { data: book, error: bookError } = await supabase
-    .from("books")
-    .select("*")
-    .eq("id", bookId)
-    .single();
+  const { data: book, error: bookError } = await supabase.from("books").select("*").eq("id", bookId).single();
 
   if (bookError || !book) {
     return NextResponse.json({ error: "Book not found" }, { status: 404 });
   }
 
-  const credit = await checkAndChargeCredits(user.id, bookId, "story", book.is_free_trial);
-  if (!credit.allowed) {
-    return NextResponse.json({ error: credit.reason }, { status: 402 });
+  try {
+    validateAIInput(book.idea, "Your idea", MAX_LENGTHS.idea);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    throw err;
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not set on the server" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "ANTHROPIC_API_KEY is not set on the server" }, { status: 500 });
+  }
+
+  const precheck = await precheckCredits(user.id, "story", book.is_free_trial);
+  if (!precheck.allowed) {
+    return NextResponse.json({ error: precheck.reason }, { status: 402 });
   }
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -82,6 +91,7 @@ Respond with ONLY valid JSON matching this exact shape, no markdown code fences,
     const textBlock = message.content.find((b) => b.type === "text");
     raw = textBlock && "text" in textBlock ? textBlock.text : "";
   } catch (err) {
+    // Claude call itself failed — nothing to charge for, the user got nothing.
     const message = err instanceof Error ? err.message : "Claude API request failed";
     return NextResponse.json({ error: message }, { status: 502 });
   }
@@ -104,11 +114,19 @@ Respond with ONLY valid JSON matching this exact shape, no markdown code fences,
     const cleaned = raw.trim().replace(/^```json\s*/i, "").replace(/```\s*$/, "");
     parsed = JSON.parse(cleaned);
   } catch {
-    return NextResponse.json(
-      { error: "Claude's response wasn't valid JSON — try regenerating." },
-      { status: 502 }
-    );
+    // Refusal or malformed output — again, nothing usable was produced, so
+    // don't charge for it.
+    if (isLikelyRefusal(raw)) {
+      return NextResponse.json(
+        { error: "That idea couldn't be turned into a children's story — try describing something different." },
+        { status: 422 }
+      );
+    }
+    return NextResponse.json({ error: "Claude's response wasn't valid JSON — try regenerating." }, { status: 502 });
   }
+
+  // Only charge once we know Claude actually produced a usable story.
+  await chargeCredits(user.id, bookId, "story", book.is_free_trial);
 
   // Replace any existing pages/characters for this book (covers the "regenerate" case).
   await supabase.from("story_pages").delete().eq("book_id", bookId);
