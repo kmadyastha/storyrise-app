@@ -16,7 +16,12 @@ export async function pingVideoWorker(): Promise<WorkerHealth> {
   }
 
   try {
-    const res = await fetch(`${url}/health`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+    // 20s, not 8s — the worker's machine auto-stops when idle to keep cost
+    // near zero, so the first ping after a quiet period has to wait for a
+    // real Fly.io cold start (boot the VM, start the container), not just a
+    // network round trip. A short timeout here reads as "unreachable" when
+    // the worker is actually just waking up.
+    const res = await fetch(`${url}/health`, { cache: "no-store", signal: AbortSignal.timeout(20000) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return { reachable: false, error: data.error || `Worker returned ${res.status}` };
