@@ -205,24 +205,40 @@ export default function HeroSection() {
                 />
               ))}
 
-              {/* Floating badges — constant across slides */}
-              <div className="absolute top-[10%] -left-2.5 bg-white px-[18px] py-2.5 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1)] font-fredoka font-semibold text-sm flex items-center gap-2 animate-float max-sm:hidden">
+              {/* Floating badges — constant across slides. The original 3 stay
+                  on the right; PDF Export and Audio Book are new, on the left. */}
+              <div className="absolute top-[8%] -right-5 bg-white px-[18px] py-2.5 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1)] font-fredoka font-semibold text-sm flex items-center gap-2 animate-float max-sm:hidden">
                 <span className="w-6 h-6 rounded-full bg-teal-tint text-teal-text flex items-center justify-center text-xs">✦</span>
                 AI Generated
               </div>
               <div
-                className="absolute bottom-[22%] -right-5 bg-white px-[18px] py-2.5 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1)] font-fredoka font-semibold text-sm flex items-center gap-2 animate-float max-sm:hidden"
-                style={{ animationDelay: "1.5s" }}
+                className="absolute top-[42%] -right-[30px] bg-white px-[18px] py-2.5 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1)] font-fredoka font-semibold text-sm flex items-center gap-2 animate-float max-sm:hidden"
+                style={{ animationDelay: "1s" }}
+              >
+                <span className="w-6 h-6 rounded-full bg-tangerine-tint text-tangerine-text flex items-center justify-center text-xs">★</span>
+                KDP Ready
+              </div>
+              <div
+                className="absolute bottom-[20%] -right-5 bg-white px-[18px] py-2.5 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1)] font-fredoka font-semibold text-sm flex items-center gap-2 animate-float max-sm:hidden"
+                style={{ animationDelay: "2s" }}
               >
                 <span className="w-6 h-6 rounded-full bg-green-tint text-green-text flex items-center justify-center text-xs">▶</span>
                 Video Export
               </div>
+
               <div
-                className="absolute top-[42%] -right-[30px] bg-white px-[18px] py-2.5 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1)] font-fredoka font-semibold text-sm flex items-center gap-2 animate-float max-sm:hidden"
-                style={{ animationDelay: "3s" }}
+                className="absolute top-[16%] -left-6 bg-white px-[18px] py-2.5 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1)] font-fredoka font-semibold text-sm flex items-center gap-2 animate-float max-sm:hidden"
+                style={{ animationDelay: "0.6s" }}
               >
-                <span className="w-6 h-6 rounded-full bg-tangerine-tint text-tangerine-text flex items-center justify-center text-xs">★</span>
-                KDP Ready
+                <span className="w-6 h-6 rounded-full bg-lime-tint text-lime-text flex items-center justify-center text-xs">▤</span>
+                PDF Export
+              </div>
+              <div
+                className="absolute bottom-[28%] -left-8 bg-white px-[18px] py-2.5 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1)] font-fredoka font-semibold text-sm flex items-center gap-2 animate-float max-sm:hidden"
+                style={{ animationDelay: "2.6s" }}
+              >
+                <span className="w-6 h-6 rounded-full bg-teal-tint text-teal-text flex items-center justify-center text-xs">🎧</span>
+                Audio Book
               </div>
             </div>
           </div>

@@ -5,11 +5,25 @@ import { useRouter } from "next/navigation";
 import StepShell from "@/components/create/StepShell";
 import FilterPill from "@/components/create/FilterPill";
 import PaidBadge from "@/components/paywall/PaidBadge";
-import { storyStyles, ageGroups, artStyles, settings } from "@/lib/dummy-data";
+import { storyStyles, ageGroups, artStyles, settings, mythologySubTypes } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
 import { createBook } from "@/lib/supabase/queries";
-import { Sparkles, ArrowRight, Image as ImageIcon, Lock, Minus, Plus, SlidersHorizontal, AlertCircle } from "lucide-react";
+import {
+  Sparkles,
+  ArrowRight,
+  Image as ImageIcon,
+  Lock,
+  Minus,
+  Plus,
+  SlidersHorizontal,
+  AlertCircle,
+  ChevronDown,
+  Palette,
+  MapPin,
+  Landmark,
+  Wand2,
+} from "lucide-react";
 import clsx from "clsx";
 
 const quickStarts = [
@@ -53,6 +67,38 @@ function OptionButton({
   );
 }
 
+// Accordion section for the redesigned Advanced Options panel — structured,
+// StoryBee-style groups instead of one flat stack of controls.
+function AccordionSection({
+  icon,
+  title,
+  defaultOpen,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div className="border border-line rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-paper/60 hover:bg-paper transition-colors"
+      >
+        <span className="flex items-center gap-2 text-xs font-semibold text-ink">
+          {icon}
+          {title}
+        </span>
+        <ChevronDown size={14} className={clsx("text-ink-soft transition-transform", open && "rotate-180")} />
+      </button>
+      {open && <div className="p-3 border-t border-line">{children}</div>}
+    </div>
+  );
+}
+
 export default function CreateStep1() {
   const router = useRouter();
   const { tier, openUpgradeModal, user, openLoginModal } = useApp();
@@ -62,6 +108,7 @@ export default function CreateStep1() {
 
   const [idea, setIdea] = useState("");
   const [style, setStyle] = useState<string>(storyStyles[0]);
+  const [mythologySubType, setMythologySubType] = useState<string>(mythologySubTypes[0]);
   const [age, setAge] = useState<string>(ageGroups[1]);
   const [pageCount, setPageCount] = useState(isFree ? 6 : 20);
   const [format, setFormat] = useState<"classic" | "immersive">("classic");
@@ -71,6 +118,7 @@ export default function CreateStep1() {
   const [rhyme, setRhyme] = useState(false);
 
   const pageLabel = pagePresets.find((p) => p.count === pageCount)?.count ?? pageCount;
+  const isMythology = style === "Mythology";
 
   const handleCreate = async () => {
     if (!idea.trim()) return;
@@ -82,10 +130,15 @@ export default function CreateStep1() {
     setCreating(true);
     setCreateError(null);
 
+    // Mythology sub-type is packed into the stored style value itself
+    // ("Mythology - Bible" etc.) so generate-story can branch its prompt on
+    // it without needing a schema change.
+    const finalStyle = isMythology ? `Mythology - ${mythologySubType}` : style;
+
     const supabase = createClient();
     const { data: book, error } = await createBook(supabase, user.id, {
       idea: idea.trim(),
-      style,
+      style: finalStyle,
       ageGroup: age,
       pageCount,
       format,
@@ -154,22 +207,45 @@ export default function CreateStep1() {
 
             <span className="text-line hidden sm:inline">|</span>
 
-            <FilterPill label="Style" value={style} panelClassName="w-72">
+            <FilterPill label="Style" value={isMythology ? `Mythology · ${mythologySubType}` : style} panelClassName="w-80">
               {(close) => (
-                <div className="grid grid-cols-2 gap-1.5">
-                  {storyStyles.map((s) => (
-                    <OptionButton
-                      key={s}
-                      active={style === s}
-                      onClick={() => {
-                        setStyle(s);
-                        close();
-                      }}
-                      className="text-left"
-                    >
-                      {s}
-                    </OptionButton>
-                  ))}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {storyStyles.map((s) => (
+                      <OptionButton
+                        key={s}
+                        active={style === s}
+                        onClick={() => {
+                          setStyle(s);
+                          if (s !== "Mythology") close();
+                        }}
+                        className="text-left"
+                      >
+                        {s}
+                      </OptionButton>
+                    ))}
+                  </div>
+
+                  {isMythology && (
+                    <div className="pt-2 border-t border-line">
+                      <p className="text-[11px] font-medium text-ink-soft mb-1.5">Mythology style</p>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {mythologySubTypes.map((m) => (
+                          <OptionButton
+                            key={m}
+                            active={mythologySubType === m}
+                            onClick={() => {
+                              setMythologySubType(m);
+                              close();
+                            }}
+                            className="text-left"
+                          >
+                            {m}
+                          </OptionButton>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </FilterPill>
@@ -327,11 +403,10 @@ export default function CreateStep1() {
 
           {/* Advanced options (left) + CTA (right) — always on their own row, CTA always flush right */}
           <div className="flex items-center justify-between gap-3 mt-3">
-            <FilterPill label="" value="Advanced options" icon={<SlidersHorizontal size={14} className="text-ink-soft" />} panelClassName="w-80">
+            <FilterPill label="" value="Advanced options" icon={<SlidersHorizontal size={14} className="text-ink-soft" />} panelClassName="w-96">
               {() => (
-                <div className="space-y-4 text-left">
-                  <div>
-                    <label className="text-xs font-medium mb-2 block text-ink-soft">Illustration art style</label>
+                <div className="space-y-2 text-left">
+                  <AccordionSection icon={<Palette size={13} className="text-teal-text" />} title="Illustration art style" defaultOpen>
                     <div className="flex flex-wrap gap-1.5">
                       {artStyles.map((a) => (
                         <OptionButton key={a} active={artStyle === a} onClick={() => setArtStyle(a)} className="!px-2.5 !py-1.5 text-xs">
@@ -339,9 +414,9 @@ export default function CreateStep1() {
                         </OptionButton>
                       ))}
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium mb-2 block text-ink-soft">Setting / backdrop</label>
+                  </AccordionSection>
+
+                  <AccordionSection icon={<MapPin size={13} className="text-teal-text" />} title="Setting / backdrop">
                     <div className="flex flex-wrap gap-1.5">
                       {settings.map((s) => (
                         <OptionButton key={s} active={setting === s} onClick={() => setSetting(s)} className="!px-2.5 !py-1.5 text-xs">
@@ -349,11 +424,31 @@ export default function CreateStep1() {
                         </OptionButton>
                       ))}
                     </div>
-                  </div>
-                  <label className="flex items-center gap-2 text-xs font-medium text-ink-soft">
-                    <input type="checkbox" checked={rhyme} onChange={(e) => setRhyme(e.target.checked)} className="accent-teal" />
-                    Rhyme mode
-                  </label>
+                  </AccordionSection>
+
+                  {isMythology && (
+                    <AccordionSection icon={<Landmark size={13} className="text-teal-text" />} title="Mythology style" defaultOpen>
+                      <div className="flex flex-wrap gap-1.5">
+                        {mythologySubTypes.map((m) => (
+                          <OptionButton
+                            key={m}
+                            active={mythologySubType === m}
+                            onClick={() => setMythologySubType(m)}
+                            className="!px-2.5 !py-1.5 text-xs"
+                          >
+                            {m}
+                          </OptionButton>
+                        ))}
+                      </div>
+                    </AccordionSection>
+                  )}
+
+                  <AccordionSection icon={<Wand2 size={13} className="text-teal-text" />} title="Story extras">
+                    <label className="flex items-center gap-2 text-xs font-medium text-ink-soft">
+                      <input type="checkbox" checked={rhyme} onChange={(e) => setRhyme(e.target.checked)} className="accent-teal" />
+                      Rhyme mode
+                    </label>
+                  </AccordionSection>
                 </div>
               )}
             </FilterPill>

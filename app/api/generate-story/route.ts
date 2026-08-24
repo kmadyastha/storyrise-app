@@ -54,12 +54,30 @@ export async function POST(request: Request) {
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+  // Mythology sub-type is packed into the stored style value as
+  // "Mythology - <sub-type>" (see app/create/page.tsx) so no schema change
+  // was needed to steer the actual prompt below.
+  const isMythology = book.style.startsWith("Mythology");
+  const mythologySubType = isMythology && book.style.includes(" - ") ? book.style.split(" - ")[1] : null;
+
+  let mythologyGuidance = "";
+  if (mythologySubType === "Bible") {
+    mythologyGuidance =
+      "\n- This is a Bible-themed story: gently retell or draw inspiration from a Bible story or value, in warm, age-appropriate language. Respectful and not preachy — focus on the story, not a lesson delivered directly to the reader.";
+  } else if (mythologySubType === "Hindu") {
+    mythologyGuidance =
+      "\n- This is a Hindu-mythology-themed story: draw inspiration from stories, characters, or values from Hindu mythology (e.g. Ramayana, Mahabharata, Puranas), told respectfully and in age-appropriate language suitable for a children's picture book.";
+  } else if (mythologySubType?.startsWith("Vedic")) {
+    mythologyGuidance =
+      "\n- This is a Vedic-style story: write the narration on each page in a shloka-inspired verse style — simple, rhythmic, rhyming couplets in English that evoke Vedic verse structure, while staying clear and age-appropriate for a children's picture book.";
+  }
+
   const prompt = `You are a professional children's picture-book writer for StoryRise.
 
 Write a ${book.page_count}-page picture book based on this idea: "${book.idea}"
 
 Constraints:
-- Style/genre: ${book.style}
+- Style/genre: ${book.style}${mythologyGuidance}
 - Target age group: ${book.age_group}
 - Exactly ${book.page_count} pages, numbered 1 to ${book.page_count}
 - Each page's narration: 1-3 sentences, roughly 20-40 words, age-appropriate vocabulary for ${book.age_group}

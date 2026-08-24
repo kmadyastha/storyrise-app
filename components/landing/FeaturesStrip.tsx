@@ -1,4 +1,4 @@
-import { PenLine, Palette, BookOpen, Clapperboard } from "lucide-react";
+import { PenLine, Palette, BookOpen, Clapperboard, Headphones } from "lucide-react";
 
 export default function FeaturesStrip() {
   const features = [
@@ -30,6 +30,13 @@ export default function FeaturesStrip() {
       iconBg: "bg-tangerine-tint",
       iconColor: "text-tangerine-text",
     },
+    {
+      icon: Headphones,
+      title: "Audiobook Export",
+      desc: "Every page's narration, stitched into one continuous listen.",
+      iconBg: "bg-teal-tint",
+      iconColor: "text-teal-text",
+    },
   ];
 
   return (
@@ -43,7 +50,7 @@ export default function FeaturesStrip() {
         </h2>
       </div>
 
-      <div className="max-w-[1200px] mx-auto grid grid-cols-4 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
+      <div className="max-w-[1200px] mx-auto grid grid-cols-5 gap-6 max-lg:grid-cols-3 max-sm:grid-cols-1">
         {features.map((f) => (
           <div
             key={f.title}

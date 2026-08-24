@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp, Tier } from "@/lib/app-context";
 import { pricingTiers, topupPacks } from "@/lib/dummy-data";
+import { ArrowRight } from "lucide-react";
 
 export default function PricingSection() {
   const { tier, setTier, triggerCelebration } = useApp();
@@ -16,13 +18,20 @@ export default function PricingSection() {
 
   return (
     <section id="pricing" className="py-[100px] px-10 bg-gradient-to-b from-paper via-warm-white to-paper">
-      <div className="text-center max-w-[700px] mx-auto mb-[60px]">
+      <div className="text-center max-w-[700px] mx-auto mb-10">
         <h2 className="font-fredoka font-bold text-5xl text-[#1a1a1a] mb-3 max-sm:text-[32px]">
           Simple, credit-based pricing
         </h2>
-        <p className="text-[17px] font-medium text-[#5a5a5a] leading-relaxed">
+        <p className="text-[17px] font-medium text-[#5a5a5a] leading-relaxed mb-4">
           Every tier gets full commercial rights. Single global pricing — no watermark restrictions on any paid plan.
+          One credit covers one story generation, one character image, one page illustration, or one narration.
         </p>
+        <Link
+          href="/pricing"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-text hover:text-teal transition-colors"
+        >
+          See the full comparison <ArrowRight size={14} />
+        </Link>
       </div>
 
       {/* Subscription Plans */}

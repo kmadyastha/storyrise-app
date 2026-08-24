@@ -34,7 +34,7 @@ export default function HowItWorks() {
     {
       number: "05",
       title: "Export & Share",
-      desc: "Download as PDF, PPTX, a KDP-ready file, or a narrated video. Gift it, sell it, share it.",
+      desc: "Download as PDF, PPTX, a KDP-ready file, a narrated video, or a full audiobook. Gift it, sell it, share it.",
       color: "teal",
     },
   ];

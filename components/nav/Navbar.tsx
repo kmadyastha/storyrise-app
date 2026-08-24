@@ -1,22 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useApp } from "@/lib/app-context";
 import ProfileMenu from "@/components/nav/ProfileMenu";
+import { ChevronDown, ArrowRight, LayoutGrid } from "lucide-react";
 
 const navLinks = [
   { label: "Features", href: "#features" },
   { label: "How it works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
 ];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
   const { loggedIn, tier, credits, openUpgradeModal, openLoginModal } = useApp();
   const pathname = usePathname();
+  const router = useRouter();
   const isHome = pathname === "/";
+  const pricingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -24,6 +27,23 @@ export default function Navbar() {
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (pricingRef.current && !pricingRef.current.contains(e.target as Node)) setPricingOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  const goToPricingSection = () => {
+    setPricingOpen(false);
+    if (isHome) {
+      document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      router.push("/#pricing");
+    }
+  };
 
   return (
     <nav
@@ -51,6 +71,46 @@ export default function Navbar() {
             {link.label}
           </a>
         ))}
+
+        {/* Pricing dropdown — plain click scrolls to the landing pricing
+            section, "Compare all plans" jumps to the dedicated page */}
+        <div className="relative" ref={pricingRef}>
+          <button
+            type="button"
+            onClick={() => setPricingOpen((v) => !v)}
+            className="relative inline-flex items-center gap-1 text-[15px] font-medium text-[#555] transition-colors hover:text-teal-text"
+          >
+            Pricing
+            <ChevronDown size={14} className={`transition-transform ${pricingOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {pricingOpen && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+12px)] w-64 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-black/[0.06] overflow-hidden z-50">
+              <button
+                onClick={goToPricingSection}
+                className="w-full flex items-start gap-2.5 px-4 py-3 text-left hover:bg-teal-tint transition-colors"
+              >
+                <ArrowRight size={15} className="text-teal-text shrink-0 mt-0.5" />
+                <span>
+                  <span className="block text-sm font-medium text-[#1a1a1a]">Pricing</span>
+                  <span className="block text-xs text-ink-soft">Jump to plans on this page</span>
+                </span>
+              </button>
+              <Link
+                href="/pricing"
+                onClick={() => setPricingOpen(false)}
+                className="w-full flex items-start gap-2.5 px-4 py-3 text-left hover:bg-teal-tint transition-colors border-t border-line"
+              >
+                <LayoutGrid size={15} className="text-teal-text shrink-0 mt-0.5" />
+                <span>
+                  <span className="block text-sm font-medium text-[#1a1a1a]">Compare all plans</span>
+                  <span className="block text-xs text-ink-soft">Full detail & feature comparison</span>
+                </span>
+              </Link>
+            </div>
+          )}
+        </div>
+
         {loggedIn && (
           <Link
             href="/dashboard"

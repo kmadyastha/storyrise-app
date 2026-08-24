@@ -86,6 +86,11 @@ export const storyStyles = [
   "Let AI decide",
 ] as const;
 
+// Only shown/used when style === "Mythology" — the chosen sub-type is packed
+// into the stored `style` value as "Mythology - <sub-type>" so it steers the
+// actual Claude prompt (see app/api/generate-story/route.ts), not just the label.
+export const mythologySubTypes = ["Bible", "Hindu", "Vedic (Shloka style)"] as const;
+
 export const ageGroups = ["0–3", "4–6", "7–9", "9–12"] as const;
 
 export const pageCountOptions = [
@@ -276,6 +281,7 @@ export const exportOptions = [
   { id: "pptx", label: "PPTX", desc: "Editable slide format.", always: true },
   { id: "video_narrated", label: "Narrated video", desc: "Immersive only. Every page voiced.", immersiveOnly: true },
   { id: "video_silent", label: "Silent video", desc: "Immersive only. Music, no narration.", immersiveOnly: true },
+  { id: "audiobook", label: "Audiobook", desc: "Every page's narration, stitched into one listen.", always: true },
   { id: "kdp", label: "KDP print file", desc: "Requires 15+ pages. Trim, spine & barcode-ready.", minPages: 15 },
   { id: "etsy", label: "Etsy digital PDF", desc: "Same interior, no KDP padding.", always: true },
 ];
