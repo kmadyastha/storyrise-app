@@ -46,7 +46,7 @@ export default function StepShell({
     <div className="hero-bridge-bg">
       <section className="mx-auto max-w-6xl px-5 sm:px-8 py-8 sm:py-10">
         {/* progress rail */}
-        <div className="flex items-center gap-1.5 mb-8 overflow-x-auto thin-scroll pb-1">
+        <div className="flex items-center justify-center gap-1.5 mb-8 overflow-x-auto thin-scroll pb-1">
           {STEPS.map((s, i) => (
             <div key={s.key} className="flex items-center gap-1.5 shrink-0">
               <div

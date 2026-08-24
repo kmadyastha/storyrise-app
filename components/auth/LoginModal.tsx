@@ -101,7 +101,7 @@ export default function LoginModal() {
                 <Sparkles size={12} /> Any Idea Becomes a Story
               </span>
               <h2 className="font-fredoka font-bold text-[32px] leading-[1.1] text-[#1a1a1a] mb-6">
-                Turn any idea into a <span className="text-teal">storybook</span>
+                Turn any idea into a <span className="text-white">storybook</span>
               </h2>
               <img
                 src="/kid2.png"

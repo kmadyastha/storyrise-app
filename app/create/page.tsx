@@ -376,33 +376,37 @@ export default function CreateStep1() {
           )}
         </div>
 
-        <div className="relative mt-8">
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <span className="text-base text-ink font-medium mr-1">Not sure what to write? Try one:</span>
+        <div className="mt-8 text-center">
+          <p className="text-base text-ink font-medium mb-3">Not sure what to write? Try one:</p>
+          <div className="flex flex-nowrap items-center justify-center gap-3 overflow-x-auto thin-scroll pb-1">
             {quickStarts.map((q) => (
               <button
                 key={q.label}
                 onClick={() => setIdea(q.idea)}
-                className="text-sm font-medium border border-line rounded-full px-4 py-2 bg-white hover:border-teal hover:bg-teal-tint transition-colors shadow-sm"
+                className="shrink-0 text-sm font-medium border border-line rounded-full px-4 py-2 bg-white hover:border-teal hover:bg-teal-tint transition-colors shadow-sm"
               >
                 {q.label}
               </button>
             ))}
           </div>
 
-          {/* hand-drawn flourish pointing back at the chips */}
-          <div className="hidden lg:block absolute -right-4 top-10 rotate-[8deg] text-teal-text/70">
-            <svg width="70" height="46" viewBox="0 0 70 46" fill="none">
-              <path
-                d="M60 6 C 40 2, 12 10, 6 34"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                fill="none"
-              />
-              <path d="M6 34 L14 26 M6 34 L15 39" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-            <span className="font-display text-sm italic -mt-1 block">Try an idea above</span>
+          {/* hand-drawn flourish — sits in normal flow under the chip row so it
+              always stays correctly anchored, rather than absolutely positioned
+              against a row whose width shifts with viewport size */}
+          <div className="hidden lg:flex justify-end max-w-[560px] mx-auto mt-1 pr-6 text-teal-text/70">
+            <div className="flex items-start gap-1.5">
+              <svg width="46" height="34" viewBox="0 0 46 34" fill="none" className="shrink-0 mt-0.5">
+                <path
+                  d="M6 4 C 24 2, 40 8, 40 24"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+                <path d="M40 24 L32 20 M40 24 L36 32" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+              <span className="font-display text-sm italic">Try an idea above</span>
+            </div>
           </div>
         </div>
       </div>
