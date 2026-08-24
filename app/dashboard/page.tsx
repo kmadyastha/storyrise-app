@@ -43,16 +43,22 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    let cancelled = false;
     (async () => {
+      if (!user) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
       const supabase = createClient();
       const { data } = await getUserBooks(supabase, user.id);
-      setBooks(data ?? []);
-      setLoading(false);
+      if (!cancelled) {
+        setBooks(data ?? []);
+        setLoading(false);
+      }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   return (

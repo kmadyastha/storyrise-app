@@ -203,7 +203,7 @@ export default function ProCelebration() {
 
   useEffect(() => {
     if (!celebrationOpen) return;
-    setPhase("caterpillar");
+    queueMicrotask(() => setPhase("caterpillar"));
     const order: Phase[] = ["caterpillar", "cocoon", "hatch", "flying", "welcome"];
     let idx = 0;
     let timer: ReturnType<typeof setTimeout>;

@@ -185,7 +185,7 @@ export async function POST(request: Request) {
   const buffer = (await pres.write({ outputType: "nodebuffer" })) as Buffer;
   const filename = `${sanitizeFilename(book.title)}.pptx`;
 
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",

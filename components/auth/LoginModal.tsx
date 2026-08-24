@@ -20,9 +20,11 @@ export default function LoginModal() {
   // onAuthStateChange — pick that up and close the modal here too.
   useEffect(() => {
     if (loggedIn && loginModalOpen) {
-      closeLoginModal();
-      setSent(false);
-      router.push("/create");
+      queueMicrotask(() => {
+        closeLoginModal();
+        setSent(false);
+        router.push("/create");
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
