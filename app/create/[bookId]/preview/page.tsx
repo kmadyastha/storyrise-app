@@ -7,7 +7,7 @@ import ExportPanel from "@/components/create/ExportPanel";
 import CoverDrawer from "@/components/create/CoverDrawer";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
-import { getBook, getStoryPages, generatePageImage, generateNarration, type Book, type StoryPage } from "@/lib/supabase/queries";
+import { getBook, getStoryPages, generatePageImage, generateNarration, getCover, type Book, type StoryPage, type Cover } from "@/lib/supabase/queries";
 import { NARRATOR_VOICES, DEFAULT_VOICE } from "@/lib/voices";
 import {
   RefreshCw,
@@ -60,6 +60,12 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
 
         const { data: pageData } = await getStoryPages(supabase, bookId);
         setPages(pageData ?? []);
+
+        // Reflects whatever's actually saved, not just this session's clicks —
+        // so returning to a book you covered yesterday still shows "View Cover".
+        const { data: coverData } = await getCover(supabase, bookId);
+        if (coverData) setCoverGenerated(true);
+
         setLoading(false);
       } catch {
         setNotFound(true);
@@ -306,8 +312,10 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
       <CoverDrawer
         open={coverOpen}
         onClose={() => setCoverOpen(false)}
-        onGenerated={() => setCoverGenerated(true)}
+        onGenerated={(cover: Cover) => setCoverGenerated(true)}
+        bookId={bookId}
         bookTitle={book?.title ?? "Your story"}
+        firstPageImageUrl={pages.find((p) => p.page_number === 1)?.image_url ?? pages[0]?.image_url ?? null}
       />
     </StepShell>
   );

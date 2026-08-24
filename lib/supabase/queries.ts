@@ -59,6 +59,38 @@ export async function getBook(supabase: SupabaseClient, bookId: string) {
   return supabase.from("books").select("*").eq("id", bookId).single<Book>();
 }
 
+export interface BookWithCoverImage extends Book {
+  // Not a DB column — derived client-side from the book's first illustrated
+  // page (if any), purely so the dashboard has something real to show
+  // before a dedicated cover image exists.
+  cover_image_url: string | null;
+}
+
+/** All of the signed-in user's books, newest-updated first, with each book's
+ * page-1 illustration (if generated) attached for the dashboard thumbnail. */
+export async function getUserBooks(supabase: SupabaseClient, userId: string) {
+  const { data, error } = await supabase
+    .from("books")
+    .select("*, story_pages(image_url, page_number)")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false });
+
+  if (error || !data) {
+    return { data: null as BookWithCoverImage[] | null, error };
+  }
+
+  const books: BookWithCoverImage[] = data.map((row) => {
+    const { story_pages, ...book } = row as Book & {
+      story_pages: { image_url: string | null; page_number: number }[] | null;
+    };
+    const pages = story_pages ?? [];
+    const firstPage = pages.find((p) => p.page_number === 1) ?? pages[0];
+    return { ...book, cover_image_url: firstPage?.image_url ?? null };
+  });
+
+  return { data: books, error: null };
+}
+
 export interface StoryPage {
   id: string;
   book_id: string;
@@ -167,5 +199,46 @@ export async function generateNarration(pageId: string, voice?: string): Promise
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to generate narration");
+  return data;
+}
+
+export interface Cover {
+  id: string;
+  book_id: string;
+  mode: "digital" | "kdp";
+  style: string;
+  title_placement: string;
+  title: string;
+  author: string | null;
+  blurb: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** One saved cover per book — returns null (not an error) when the book
+ * doesn't have one yet, since "no cover saved" is the normal starting state. */
+export async function getCover(supabase: SupabaseClient, bookId: string) {
+  return supabase.from("covers").select("*").eq("book_id", bookId).maybeSingle<Cover>();
+}
+
+export interface GenerateCoverInput {
+  bookId: string;
+  mode: "digital" | "kdp";
+  style: string;
+  titlePlacement: string;
+  title: string;
+  author: string;
+  blurb: string;
+}
+
+export async function generateCover(input: GenerateCoverInput): Promise<{ cover: Cover }> {
+  const res = await fetch("/api/generate-cover", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to save cover");
   return data;
 }

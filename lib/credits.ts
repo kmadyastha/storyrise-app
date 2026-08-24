@@ -1,12 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type CreditOperation = "story" | "character_image" | "page_image" | "narration";
+export type CreditOperation = "story" | "character_image" | "page_image" | "narration" | "cover";
 
 const CREDIT_COST: Record<CreditOperation, number> = {
   story: 1,
   character_image: 1,
   page_image: 1,
   narration: 1,
+  cover: 1,
 };
 
 interface CheckResult {

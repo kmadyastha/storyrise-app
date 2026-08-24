@@ -1,40 +1,96 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import IllustrationPlaceholder from "@/components/ui/IllustrationPlaceholder";
 import { coverStyles, titlePlacements } from "@/lib/dummy-data";
-import { X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { getCover, generateCover, type Cover } from "@/lib/supabase/queries";
+import { X, AlertCircle } from "lucide-react";
 import clsx from "clsx";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onGenerated: () => void;
+  onGenerated: (cover: Cover) => void;
+  bookId: string;
   bookTitle: string;
+  /** Page 1's real illustration, if it's been generated — used as the cover
+   * backdrop instead of a placeholder whenever it's available. */
+  firstPageImageUrl?: string | null;
 }
 
-export default function CoverDrawer({ open, onClose, onGenerated, bookTitle }: Props) {
+export default function CoverDrawer({ open, onClose, onGenerated, bookId, bookTitle, firstPageImageUrl }: Props) {
   const [mode, setMode] = useState<"digital" | "kdp">("digital");
   const [style, setStyle] = useState(coverStyles[0].id);
-  const [placement, setPlacement] = useState(titlePlacements[0]);
+  const [placement, setPlacement] = useState<string>(titlePlacements[0]);
   const [title, setTitle] = useState(bookTitle);
   const [author, setAuthor] = useState("");
-  const [blurb, setBlurb] = useState(
-    "When Lumo finds a lantern that only lights up for the brave, one quiet forest walk turns into the biggest adventure of her life."
-  );
+  const [blurb, setBlurb] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
 
-  const generate = () => {
+  // Load any previously saved cover for this book so re-opening the drawer
+  // shows what's actually stored, not a reset form.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+
+    (async () => {
+      setLoadingExisting(true);
+      setError(null);
+      const supabase = createClient();
+      const { data } = await getCover(supabase, bookId);
+      if (cancelled) return;
+
+      if (data) {
+        setMode(data.mode);
+        setStyle(data.style);
+        setPlacement(data.title_placement);
+        setTitle(data.title);
+        setAuthor(data.author ?? "");
+        setBlurb(data.blurb ?? "");
+        setCoverImageUrl(data.image_url);
+      } else {
+        setTitle(bookTitle);
+      }
+      setLoadingExisting(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, bookId]);
+
+  const generate = async () => {
     setGenerating(true);
-    setTimeout(() => {
-      setGenerating(false);
-      onGenerated();
+    setError(null);
+    try {
+      const { cover } = await generateCover({
+        bookId,
+        mode,
+        style,
+        titlePlacement: placement,
+        title,
+        author,
+        blurb,
+      });
+      setCoverImageUrl(cover.image_url);
+      onGenerated(cover);
       onClose();
-    }, 1200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save your cover — please try again.");
+    } finally {
+      setGenerating(false);
+    }
   };
+
+  const backdropImage = coverImageUrl ?? firstPageImageUrl ?? null;
 
   return (
     <AnimatePresence>
@@ -84,10 +140,16 @@ export default function CoverDrawer({ open, onClose, onGenerated, bookTitle }: P
                 </button>
               </div>
 
-              {/* Preview canvas — single panel for digital, front+spine+back for KDP */}
+              {/* Preview canvas — single panel for digital, front+spine+back for KDP.
+                  Uses the book's real page-1 illustration once one exists, instead of
+                  always falling back to the placeholder art. */}
               {mode === "digital" ? (
-                <div className="relative rounded-2xl overflow-hidden border border-line aspect-[3/4] max-w-[220px] mx-auto">
-                  <IllustrationPlaceholder color="teal" seed={99} className="w-full h-full" />
+                <div className="relative rounded-2xl overflow-hidden border border-line aspect-[3/4] max-w-[220px] mx-auto bg-paper">
+                  {backdropImage ? (
+                    <img src={backdropImage} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <IllustrationPlaceholder color="teal" seed={99} className="w-full h-full" />
+                  )}
                   <div
                     className={clsx(
                       "absolute inset-x-3 text-center",
@@ -104,8 +166,12 @@ export default function CoverDrawer({ open, onClose, onGenerated, bookTitle }: P
                 </div>
               ) : (
                 <div className="flex items-stretch gap-1 max-w-[340px] mx-auto">
-                  <div className="relative rounded-l-xl overflow-hidden border border-line flex-1 aspect-[3/4]">
-                    <IllustrationPlaceholder color="green" seed={101} className="w-full h-full" />
+                  <div className="relative rounded-l-xl overflow-hidden border border-line flex-1 aspect-[3/4] bg-paper">
+                    {backdropImage ? (
+                      <img src={backdropImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <IllustrationPlaceholder color="green" seed={101} className="w-full h-full" />
+                    )}
                     <div className="absolute inset-x-2 bottom-2 bg-white/90 rounded px-2 py-1.5">
                       <p className="text-[9px] text-ink-soft leading-snug line-clamp-4">{blurb}</p>
                     </div>
@@ -113,8 +179,12 @@ export default function CoverDrawer({ open, onClose, onGenerated, bookTitle }: P
                   <div className="w-4 bg-ink/80 flex items-center justify-center shrink-0">
                     <span className="text-[7px] text-white -rotate-90 whitespace-nowrap tracking-wide">{title}</span>
                   </div>
-                  <div className="relative rounded-r-xl overflow-hidden border border-line flex-1 aspect-[3/4]">
-                    <IllustrationPlaceholder color="teal" seed={99} className="w-full h-full" />
+                  <div className="relative rounded-r-xl overflow-hidden border border-line flex-1 aspect-[3/4] bg-paper">
+                    {backdropImage ? (
+                      <img src={backdropImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <IllustrationPlaceholder color="teal" seed={99} className="w-full h-full" />
+                    )}
                     <div
                       className={clsx(
                         "absolute inset-x-3 text-center",
@@ -202,6 +272,7 @@ export default function CoverDrawer({ open, onClose, onGenerated, bookTitle }: P
                   value={blurb}
                   onChange={(e) => setBlurb(e.target.value)}
                   rows={3}
+                  placeholder="A line or two that sells the story…"
                   className="w-full rounded-xl border border-line px-4 py-2.5 text-sm focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal resize-none"
                 />
               </div>
@@ -213,8 +284,15 @@ export default function CoverDrawer({ open, onClose, onGenerated, bookTitle }: P
                 </Card>
               )}
 
-              <Button className="w-full" size="lg" onClick={generate} disabled={generating}>
-                {generating ? "Generating cover…" : `Generate ${mode === "kdp" ? "KDP" : "digital"} cover — 1 credit`}
+              {error && (
+                <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <Button className="w-full" size="lg" onClick={generate} disabled={generating || loadingExisting || !title.trim()}>
+                {generating ? "Saving cover…" : `Save ${mode === "kdp" ? "KDP" : "digital"} cover — 1 credit`}
               </Button>
             </div>
           </motion.div>
