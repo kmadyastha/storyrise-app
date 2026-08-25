@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
 export interface Book {
   id: string;
@@ -57,6 +58,15 @@ export async function createBook(supabase: SupabaseClient, userId: string, input
 
 export async function getBook(supabase: SupabaseClient, bookId: string) {
   return supabase.from("books").select("*").eq("id", bookId).single<Book>();
+}
+
+/** Marks the book's status for resume-progress purposes (e.g. "which step
+ * did the user actually get to"). Uses the client-side Supabase client
+ * directly (not a route) since this is a plain owner-scoped UPDATE, no
+ * credit or AI logic involved. */
+export async function updateBookStatus(bookId: string, status: Book["status"]) {
+  const supabase = createClient();
+  return supabase.from("books").update({ status }).eq("id", bookId);
 }
 
 export interface BookWithCoverImage extends Book {

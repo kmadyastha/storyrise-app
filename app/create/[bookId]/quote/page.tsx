@@ -29,6 +29,7 @@ export default function QuoteStep({ params }: { params: Promise<{ bookId: string
         onBack={`/create/${bookId}/characters`}
         onNext={() => router.push(`/create/${bookId}/generating`)}
         nextLabel="Generate your free storybook"
+        bookId={bookId}
       >
         <Card className="bg-teal-tint border-teal/20 text-sm text-ink-soft">
           Your 6-page trial book (3 illustrated images) is included at no cost. Upgrade any time to unlock longer books,
@@ -46,6 +47,7 @@ export default function QuoteStep({ params }: { params: Promise<{ bookId: string
       onBack={`/create/${bookId}/characters`}
       onNext={() => router.push(`/create/${bookId}/generating`)}
       nextLabel={`Generate storybook — ${total} credits`}
+      bookId={bookId}
     >
       <div className="space-y-4">
         <button

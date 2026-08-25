@@ -18,6 +18,25 @@ const statusLabel: Record<string, string> = {
   characters_confirmed: "Characters set",
 };
 
+// Where clicking a book in "My books" should actually resume — the step
+// after whatever was last confirmed, not always Preview regardless of
+// progress. "complete" is the one case where Preview genuinely is correct.
+function resumeRoute(bookId: string, status: string) {
+  switch (status) {
+    case "draft":
+      return `/create/${bookId}/story`;
+    case "story_generated":
+      return `/create/${bookId}/characters`;
+    case "characters_confirmed":
+      return `/create/${bookId}/quote`;
+    case "generating":
+      return `/create/${bookId}/generating`;
+    case "complete":
+    default:
+      return `/create/${bookId}/preview`;
+  }
+}
+
 const placeholderColors = ["teal", "lime", "green", "tangerine"] as const;
 
 // Deterministic per book id, so the same book always gets the same
@@ -116,7 +135,7 @@ export default function DashboardPage() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {books.map((b) => (
-            <Link key={b.id} href={`/create/${b.id}/preview`}>
+            <Link key={b.id} href={resumeRoute(b.id, b.status)}>
               <Card padded={false} className="overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all">
                 <div className="relative aspect-[4/3]">
                   {b.cover_image_url ? (

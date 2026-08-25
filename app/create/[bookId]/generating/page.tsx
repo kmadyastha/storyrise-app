@@ -3,9 +3,16 @@
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { BookOpen, Palette, Check, AlertCircle, RefreshCw } from "lucide-react";
+import { Palette, Check, AlertCircle, RefreshCw, Sparkle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { getStoryPages, generatePageImage, type StoryPage } from "@/lib/supabase/queries";
+import { getStoryPages, generatePageImage, updateBookStatus, type StoryPage } from "@/lib/supabase/queries";
+
+const ORBIT_SPARKLES = [
+  { top: "4%", left: "76%", size: 15, delay: 0 },
+  { top: "70%", left: "82%", size: 11, delay: 0.6 },
+  { top: "78%", left: "10%", size: 13, delay: 1.1 },
+  { top: "8%", left: "8%", size: 10, delay: 1.7 },
+];
 
 export default function GeneratingStep({ params }: { params: Promise<{ bookId: string }> }) {
   const { bookId } = use(params);
@@ -20,6 +27,7 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
   const runIllustration = async (pagesToRun: StoryPage[]) => {
     setPhase("illustrating");
     setFailedPages([]);
+    updateBookStatus(bookId, "generating").catch(() => {});
     let completed = 0;
 
     for (const page of pagesToRun) {
@@ -85,13 +93,45 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
 
   return (
     <section className="mx-auto max-w-md px-5 py-24 text-center">
-      <motion.div
-        className="w-16 h-16 rounded-full bg-teal-tint grid place-items-center mx-auto mb-6"
-        animate={phase === "illustrating" || phase === "loading" ? { rotate: 360 } : {}}
-        transition={{ repeat: Infinity, duration: 2.4, ease: "linear" }}
-      >
-        <BookOpen size={26} className="text-teal-text" />
-      </motion.div>
+      <div className="relative w-24 h-24 mx-auto mb-6">
+        <motion.div
+          animate={
+            phase === "illustrating" || phase === "loading"
+              ? { scale: [1, 1.08, 1] }
+              : {}
+          }
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 rounded-full bg-teal-tint"
+        />
+        <motion.div
+          animate={
+            phase === "illustrating" || phase === "loading"
+              ? { rotate: [0, -6, 6, 0], y: [0, -4, 0] }
+              : {}
+          }
+          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 grid place-items-center text-teal-text"
+        >
+          <Palette size={34} strokeWidth={1.8} />
+        </motion.div>
+        {(phase === "illustrating" || phase === "loading") &&
+          ORBIT_SPARKLES.map((s, i) => (
+            <motion.span
+              key={i}
+              className="absolute text-teal"
+              style={{ top: s.top, left: s.left }}
+              animate={{ opacity: [0, 1, 0], scale: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.7, repeat: Infinity, delay: s.delay, ease: "easeInOut" }}
+            >
+              <Sparkle size={s.size} fill="currentColor" />
+            </motion.span>
+          ))}
+        {phase === "done" && (
+          <div className="absolute inset-0 grid place-items-center text-green">
+            <Check size={34} strokeWidth={2.2} />
+          </div>
+        )}
+      </div>
       <h1 className="font-display text-2xl font-semibold mb-2">Generating your storybook</h1>
       <p className="text-sm text-ink-soft mb-8">
         {phase === "error"
@@ -124,9 +164,23 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
           >
             {phase === "done" ? <Check size={14} /> : <Palette size={14} />}
           </span>
-          <span className="text-sm">
+          <span className="text-sm flex items-center gap-2">
             {phase === "loading" && "Preparing pages…"}
-            {phase === "illustrating" && `Rendering illustrations — page ${illustratedCount} of ${totalToIllustrate}`}
+            {phase === "illustrating" && (
+              <>
+                {`Rendering illustrations — page ${illustratedCount} of ${totalToIllustrate}`}
+                <span className="flex items-center gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <motion.span
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-teal"
+                      animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+                    />
+                  ))}
+                </span>
+              </>
+            )}
             {phase === "done" && "Illustrations complete"}
             {phase === "error" && "Rendering each page's illustration"}
           </span>

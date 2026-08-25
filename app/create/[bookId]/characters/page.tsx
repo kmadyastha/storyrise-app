@@ -7,7 +7,7 @@ import PaidBadge from "@/components/paywall/PaidBadge";
 import Card from "@/components/ui/Card";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
-import { getCharacters, generateCharacterImage, type Character } from "@/lib/supabase/queries";
+import { getCharacters, generateCharacterImage, updateBookStatus, type Character } from "@/lib/supabase/queries";
 import { RefreshCw, Upload, Undo2, AlertCircle, Sparkles } from "lucide-react";
 
 export default function CharactersStep({ params }: { params: Promise<{ bookId: string }> }) {
@@ -22,6 +22,13 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
   const [busy, setBusy] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const proceedToQuote = async () => {
+    // Fire-and-forget: this is a resume-progress marker, not something the
+    // user should ever be blocked on if it fails.
+    updateBookStatus(bookId, "characters_confirmed").catch(() => {});
+    router.push(`/create/${bookId}/quote`);
+  };
 
   const generateFor = async (id: string) => {
     setBusy(id);
@@ -100,7 +107,7 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
 
   if (loading) {
     return (
-      <StepShell activeKey="characters" title="Loading…" onBack={`/create/${bookId}/story`} hideFooter>
+      <StepShell activeKey="characters" title="Loading…" onBack={`/create/${bookId}/story`} hideFooter bookId={bookId}>
         <div className="flex items-center gap-3 text-ink-soft text-sm">
           <Sparkles size={16} className="animate-pulse text-teal-text" />
           Loading your characters…
@@ -115,8 +122,9 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
       title="Meet your characters"
       subtitle="Every character from your story shows up here automatically. Human characters are described, never photographed — review each reference before continuing."
       onBack={`/create/${bookId}/story`}
-      onNext={() => router.push(`/create/${bookId}/quote`)}
+      onNext={proceedToQuote}
       wide
+      bookId={bookId}
     >
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {characters.map((c) => {

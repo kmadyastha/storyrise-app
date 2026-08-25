@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import { ChevronLeft } from "lucide-react";
@@ -14,6 +15,15 @@ const STEPS = [
   { key: "preview", label: "Preview" },
 ];
 
+// "create" (step 1) has no bookId yet — it's a different route shape
+// (/create, not /create/[bookId]/...) — everything else follows the
+// bookId-scoped pattern.
+function routeForStep(key: string, bookId?: string) {
+  if (key === "create") return "/create";
+  if (!bookId) return null;
+  return `/create/${bookId}/${key}`;
+}
+
 interface Props {
   activeKey: string;
   title: string;
@@ -25,6 +35,12 @@ interface Props {
   nextDisabled?: boolean;
   hideFooter?: boolean;
   wide?: boolean;
+  /** Enables direct navigation on the step rail — clicking any already-
+   * reached step (index <= current) jumps straight there instead of
+   * requiring repeated Back clicks. Steps ahead of current progress stay
+   * non-interactive, since jumping into a step with no data yet would show
+   * a broken/empty page rather than actually skip you ahead. */
+  bookId?: string;
 }
 
 export default function StepShell({
@@ -38,6 +54,7 @@ export default function StepShell({
   nextDisabled,
   hideFooter,
   wide,
+  bookId,
 }: Props) {
   const router = useRouter();
   const activeIndex = STEPS.findIndex((s) => s.key === activeKey);
@@ -47,23 +64,35 @@ export default function StepShell({
       <section className="mx-auto max-w-6xl px-5 sm:px-8 py-8 sm:py-10">
         {/* progress rail */}
         <div className="flex items-center justify-center gap-1.5 mb-8 overflow-x-auto thin-scroll pb-1">
-          {STEPS.map((s, i) => (
-            <div key={s.key} className="flex items-center gap-1.5 shrink-0">
-              <div
-                className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2.5 py-1 ${
-                  i === activeIndex
-                    ? "bg-teal text-white"
-                    : i < activeIndex
-                    ? "bg-teal-tint text-teal-text"
-                    : "bg-white/70 text-ink-soft border border-line"
-                }`}
-              >
+          {STEPS.map((s, i) => {
+            const pillClass = `flex items-center gap-1.5 text-xs font-medium rounded-full px-2.5 py-1 ${
+              i === activeIndex
+                ? "bg-teal text-white"
+                : i < activeIndex
+                ? "bg-teal-tint text-teal-text hover:bg-teal-tint/70 transition-colors"
+                : "bg-white/70 text-ink-soft border border-line"
+            }`;
+            const pillContent = (
+              <>
                 <span>{i + 1}</span>
                 <span className="hidden sm:inline">{s.label}</span>
+              </>
+            );
+            const route = i <= activeIndex ? routeForStep(s.key, bookId) : null;
+
+            return (
+              <div key={s.key} className="flex items-center gap-1.5 shrink-0">
+                {route && i !== activeIndex ? (
+                  <Link href={route} className={pillClass}>
+                    {pillContent}
+                  </Link>
+                ) : (
+                  <div className={pillClass}>{pillContent}</div>
+                )}
+                {i < STEPS.length - 1 && <span className="w-3 h-px bg-line shrink-0" />}
               </div>
-              {i < STEPS.length - 1 && <span className="w-3 h-px bg-line shrink-0" />}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className={wide ? "" : "max-w-2xl"}>

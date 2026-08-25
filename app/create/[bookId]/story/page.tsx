@@ -230,7 +230,7 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
 
   if (notFound) {
     return (
-      <StepShell activeKey="story" title="Story not found" onBack="/create" hideFooter>
+      <StepShell activeKey="story" title="Story not found" onBack="/create" hideFooter bookId={bookId}>
         <Card className="text-sm text-ink-soft">
           We couldn&rsquo;t find that book — it may have been deleted, or the link is out of date.
         </Card>
@@ -240,7 +240,7 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
 
   if (loading || generating) {
     return (
-      <StepShell activeKey="story" title={generating ? "Writing your story…" : "Loading…"} onBack="/create" hideFooter wide>
+      <StepShell activeKey="story" title={generating ? "Writing your story…" : "Loading…"} onBack="/create" hideFooter wide bookId={bookId}>
         {generating ? (
           <GenerationLoader
             messages={[
@@ -270,6 +270,7 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
       onBack="/create"
       onNext={() => router.push(`/create/${bookId}/characters`)}
       wide
+      bookId={bookId}
     >
       {error && (
         <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3 mb-4">

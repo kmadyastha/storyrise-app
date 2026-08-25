@@ -36,6 +36,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
   const [notFound, setNotFound] = useState(false);
   const [active, setActive] = useState(0);
   const [regenerating, setRegenerating] = useState(false);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [coverOpen, setCoverOpen] = useState(false);
   const [coverGenerated, setCoverGenerated] = useState(false);
@@ -80,11 +81,12 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
     if (isFree) return openUpgradeModal();
     if (!page) return;
     setRegenerating(true);
+    setRegenerateError(null);
     try {
       const { imageUrl } = await generatePageImage(page.id);
       setPages((prev) => prev.map((p) => (p.id === page.id ? { ...p, image_url: imageUrl } : p)));
-    } catch {
-      // Leave the existing image in place — the button just stops spinning.
+    } catch (err) {
+      setRegenerateError(err instanceof Error ? err.message : "Couldn't regenerate this page — please try again.");
     } finally {
       setRegenerating(false);
     }
@@ -105,6 +107,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
     }
 
     setNarrating(true);
+    setRegenerateError(null);
     try {
       const { audioUrl } = await generateNarration(page.id, voice);
       setPages((prev) => prev.map((p) => (p.id === page.id ? { ...p, audio_url: audioUrl } : p)));
@@ -112,8 +115,8 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
         audioRef.current?.play();
         setPlaying(true);
       }, 100);
-    } catch {
-      // leave narrating state to clear below; user can retry the button
+    } catch (err) {
+      setRegenerateError(err instanceof Error ? err.message : "Couldn't generate narration — please try again.");
     } finally {
       setNarrating(false);
     }
@@ -123,13 +126,14 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
     const clamped = Math.max(0, Math.min(pages.length - 1, i));
     setActive(clamped);
     setPlaying(false);
+    setRegenerateError(null);
     const thumb = filmstripRef.current?.children[clamped] as HTMLElement | undefined;
     thumb?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   };
 
   if (notFound) {
     return (
-      <StepShell activeKey="preview" title="Book not found" onBack="/create" hideFooter>
+      <StepShell activeKey="preview" title="Book not found" onBack="/create" hideFooter bookId={bookId}>
         <p className="text-sm text-ink-soft">We couldn&rsquo;t find that book — it may have been deleted.</p>
       </StepShell>
     );
@@ -137,7 +141,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
 
   if (loading || !page) {
     return (
-      <StepShell activeKey="preview" title="Loading…" onBack={`/create/${bookId}/quote`} hideFooter>
+      <StepShell activeKey="preview" title="Loading…" onBack={`/create/${bookId}/quote`} hideFooter bookId={bookId}>
         <div className="flex items-center gap-3 text-ink-soft text-sm">
           <Sparkles size={16} className="animate-pulse text-teal-text" />
           Loading your book…
@@ -154,6 +158,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
       onBack={`/create/${bookId}/quote`}
       hideFooter
       wide
+      bookId={bookId}
     >
       {/* Primary actions */}
       <div className="flex flex-wrap gap-3 mb-6">
@@ -238,7 +243,6 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
                 </option>
               ))}
             </select>
-
             <button
               onClick={toggleNarration}
               disabled={narrating}
@@ -259,6 +263,13 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
             Page {active + 1} of {pages.length}
           </span>
         </div>
+
+        {regenerateError && (
+          <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3 mt-3">
+            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+            <span>{regenerateError}</span>
+          </div>
+        )}
 
         {page.audio_url && (
           <audio

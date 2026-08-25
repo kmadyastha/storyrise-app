@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import textToSpeech from "@google-cloud/text-to-speech";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { DEFAULT_VOICE } from "@/lib/voices";
 import { precheckCredits, chargeCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -79,13 +80,12 @@ export async function POST(request: Request) {
     const bytes = Buffer.from(response.audioContent as Uint8Array);
     const path = `narration/${pageId}.mp3`;
 
-    const { error: uploadError } = await supabase.storage.from("book-assets").upload(path, bytes, {
-      contentType: "audio/mpeg",
-      upsert: true,
-    });
+    const { error: uploadError } = await createAdminClient()
+      .storage.from("book-assets")
+      .upload(path, bytes, { contentType: "audio/mpeg", upsert: true });
     if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-    const { data: urlData } = supabase.storage.from("book-assets").getPublicUrl(path);
+    const { data: urlData } = createAdminClient().storage.from("book-assets").getPublicUrl(path);
     audioUrl = urlData.publicUrl;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Narration generation failed";
