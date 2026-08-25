@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, degrees, PDFPage, PDFFont } from "pdf-lib";
 import type { Book, StoryPage, Cover } from "@/lib/supabase/queries";
 import { fetchImage, WATERMARK_TEXT } from "@/lib/export/exportData";
+import { normalizeImageForEmbed } from "@/lib/export/normalizeImageForEmbed";
 import { wrapText } from "@/lib/export/wrapText";
 
 const PT_PER_IN = 72;
@@ -45,11 +46,11 @@ export async function buildInteriorPdf(opts: BuildInteriorPdfOptions): Promise<U
     const fetched = await fetchImage(url);
     if (!fetched) return null;
     try {
-      if (fetched.contentType.includes("png")) return await pdf.embedPng(fetched.bytes);
-      return await pdf.embedJpg(fetched.bytes);
+      const normalized = await normalizeImageForEmbed(fetched.bytes);
+      return normalized.format === "png" ? await pdf.embedPng(normalized.bytes) : await pdf.embedJpg(normalized.bytes);
     } catch {
-      // Some Nano Banana responses come back as webp/other — pdf-lib only
-      // embeds PNG/JPEG. Skip the image rather than fail the whole export.
+      // Genuinely corrupt/unreadable image data (rare) — skip it rather
+      // than fail the whole export.
       return null;
     }
   }
@@ -129,13 +130,18 @@ export async function buildInteriorPdf(opts: BuildInteriorPdfOptions): Promise<U
     drawWatermark(page);
   }
 
-  // Immersive: one page per story page, image + text blended together.
-  // Classic: two pages per story page — full-bleed image page, then text page.
+  // One PDF page per story page, always — matches exactly what's shown in
+  // the in-app Preview. Immersive splits image/text side by side; Classic
+  // shows the full illustration with the narration as a caption strip along
+  // the bottom, same as the Preview page's single-image-plus-caption card.
+  // (Earlier version produced two separate PDF pages per story page for
+  // Classic — image-only then text-only — which doubled the page count and
+  // didn't match what the customer had actually previewed and approved.)
   for (const storyPage of pages) {
     const img = await embedImage(storyPage.image_url);
+    const page = pdf.addPage([pageWidth, pageHeight]);
 
     if (book.format === "immersive") {
-      const page = pdf.addPage([pageWidth, pageHeight]);
       const imageOnRight = book.layout !== "image-left";
       const half = pageWidth / 2;
       const imgX = imageOnRight ? half : 0;
@@ -149,38 +155,36 @@ export async function buildInteriorPdf(opts: BuildInteriorPdfOptions): Promise<U
         size: 15,
         lineHeight: 21,
       });
-      page.drawText(String(storyPage.page_number), {
-        x: pageWidth / 2 - 6,
-        y: 16,
-        size: 9,
-        font: bodyFont,
-        color: rgb(0.6, 0.6, 0.6),
-      });
-      drawWatermark(page);
     } else {
-      const imgPage = pdf.addPage([pageWidth, pageHeight]);
-      drawImageCover(imgPage, img, 0, 0, pageWidth, pageHeight);
-      drawWatermark(imgPage);
+      drawImageCover(page, img, 0, 0, pageWidth, pageHeight);
 
-      const textPage = pdf.addPage([pageWidth, pageHeight]);
-      textPage.drawRectangle({ x: 0, y: 0, width: pageWidth, height: pageHeight, color: rgb(0.996, 0.98, 0.965) });
-      drawWrappedText(textPage, storyPage.narration, {
-        x: margin,
-        y: pageHeight / 2 + 20,
-        width: pageWidth - margin * 2,
-        size: 18,
-        lineHeight: 26,
-        align: "center",
+      // Caption strip along the bottom, matching the Preview page's white
+      // card sitting over the illustration.
+      const lines = wrapText(storyPage.narration, pageWidth - margin * 2, (s) => bodyFont.widthOfTextAtSize(s, 13));
+      const stripHeight = Math.max(60, lines.length * 17 + 26);
+      page.drawRectangle({
+        x: 0,
+        y: 0,
+        width: pageWidth,
+        height: stripHeight,
+        color: rgb(1, 1, 1),
+        opacity: 0.94,
       });
-      textPage.drawText(String(storyPage.page_number), {
-        x: pageWidth / 2 - 6,
-        y: 16,
-        size: 9,
-        font: bodyFont,
-        color: rgb(0.6, 0.6, 0.6),
-      });
-      drawWatermark(textPage);
+      let cursorY = stripHeight - 22;
+      for (const line of lines) {
+        page.drawText(line, { x: margin, y: cursorY, size: 13, font: bodyFont, color: rgb(0.15, 0.15, 0.15) });
+        cursorY -= 17;
+      }
     }
+
+    page.drawText(String(storyPage.page_number), {
+      x: pageWidth / 2 - 6,
+      y: 16,
+      size: 9,
+      font: bodyFont,
+      color: rgb(0.6, 0.6, 0.6),
+    });
+    drawWatermark(page);
   }
 
   return pdf.save();

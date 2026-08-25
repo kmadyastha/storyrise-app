@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { precheckCredits, chargeCredits } from "@/lib/credits";
 import { fetchExportData, fetchImage, sanitizeFilename } from "@/lib/export/exportData";
+import { normalizeImageForEmbed } from "@/lib/export/normalizeImageForEmbed";
 import { buildInteriorPdf } from "@/lib/export/buildInteriorPdf";
 import { wrapText } from "@/lib/export/wrapText";
 import { bookSizes } from "@/lib/dummy-data";
@@ -101,8 +102,10 @@ export async function POST(request: Request) {
     const fetched = await fetchImage(url);
     if (!fetched) return null;
     try {
-      if (fetched.contentType.includes("png")) return await coverPdf.embedPng(fetched.bytes);
-      return await coverPdf.embedJpg(fetched.bytes);
+      const normalized = await normalizeImageForEmbed(fetched.bytes);
+      return normalized.format === "png"
+        ? await coverPdf.embedPng(normalized.bytes)
+        : await coverPdf.embedJpg(normalized.bytes);
     } catch {
       return null;
     }

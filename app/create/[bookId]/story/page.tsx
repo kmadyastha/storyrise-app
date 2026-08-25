@@ -8,7 +8,7 @@ import Card from "@/components/ui/Card";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
 import { getBook, getStoryPages, updateStoryPage, generateStory, type Book, type StoryPage } from "@/lib/supabase/queries";
-import { RefreshCw, Users, MapPin, Pencil, Check, X, BookOpen, ImageIcon, Save, AlertCircle, Sparkles } from "lucide-react";
+import { RefreshCw, Users, MapPin, Pencil, Check, X, BookOpen, ImageIcon, Save, AlertCircle, Sparkles, Lock } from "lucide-react";
 import GenerationLoader from "@/components/ui/GenerationLoader";
 import clsx from "clsx";
 
@@ -29,6 +29,7 @@ function EditableField({
   textClass,
   disabled,
   onLockedClick,
+  lockNode,
 }: {
   value: string;
   onSave: (v: string) => void;
@@ -39,6 +40,7 @@ function EditableField({
   textClass: string;
   disabled?: boolean;
   onLockedClick?: () => void;
+  lockNode?: React.ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -66,7 +68,7 @@ function EditableField({
         {!editing && (
           <button onClick={startEdit} className="relative text-ink-soft hover:text-teal-text" aria-label={`Edit ${label}`}>
             <Pencil size={12} />
-            {disabled && <PaidBadge inline />}
+            {disabled && lockNode}
           </button>
         )}
       </div>
@@ -113,7 +115,6 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
   const router = useRouter();
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
-
   const [book, setBook] = useState<Book | null>(null);
   const [rows, setRows] = useState<StoryPage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,12 +211,14 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
 
   const regenerate = async () => {
     if (isFree) return openUpgradeModal();
+    if (book?.status === "complete") return;
     await runGeneration();
     setRegenCount((c) => c + 1);
   };
 
   const saveStory = () => {
     if (isFree) return openUpgradeModal();
+    if (book?.status === "complete") return;
     // Each line already persists itself the moment "Save line" is clicked —
     // this button is a reassuring confirmation, not a second write.
     setSavedToast(true);
@@ -291,17 +294,23 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
           )}
           <button
             onClick={saveStory}
-            className="relative inline-flex items-center gap-1.5 text-sm font-medium text-ink hover:text-teal-text"
+            disabled={book?.status === "complete"}
+            title={book?.status === "complete" ? "Images are fully generated — create a new book to change the story." : undefined}
+            className="relative inline-flex items-center gap-1.5 text-sm font-medium text-ink hover:text-teal-text disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-ink"
           >
             <Save size={14} /> Save story
-            {isFree && <PaidBadge inline />}
+            {isFree && book?.status !== "complete" && <PaidBadge inline />}
+            {book?.status === "complete" && <Lock size={12} className="text-ink-soft" />}
           </button>
           <button
             onClick={regenerate}
-            className="relative inline-flex items-center gap-1.5 text-sm font-medium text-teal-text hover:text-teal disabled:opacity-50"
+            disabled={book?.status === "complete"}
+            title={book?.status === "complete" ? "Images are fully generated — create a new book to change the story." : undefined}
+            className="relative inline-flex items-center gap-1.5 text-sm font-medium text-teal-text hover:text-teal disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-teal-text"
           >
             <RefreshCw size={14} /> Regenerate story
-            {isFree && <PaidBadge inline />}
+            {isFree && book?.status !== "complete" && <PaidBadge inline />}
+            {book?.status === "complete" && <Lock size={12} className="text-ink-soft" />}
           </button>
         </div>
       </div>
@@ -322,8 +331,15 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
                   icon={<BookOpen size={11} />}
                   toneClass="bg-teal-tint/40"
                   textClass="text-sm leading-relaxed text-ink"
-                  disabled={isFree}
-                  onLockedClick={openUpgradeModal}
+                  disabled={isFree || book?.status === "complete"}
+                  onLockedClick={book?.status === "complete" ? undefined : openUpgradeModal}
+                  lockNode={
+                    book?.status === "complete" ? (
+                      <span title="Images are fully generated — create a new book to change the story."><Lock size={10} className="text-ink-soft" /></span>
+                    ) : (
+                      <PaidBadge inline />
+                    )
+                  }
                 />
                 <EditableField
                   value={row.image_description}
@@ -333,8 +349,15 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
                   icon={<ImageIcon size={11} />}
                   toneClass="bg-paper"
                   textClass="text-xs italic text-ink-soft leading-relaxed"
-                  disabled={isFree}
-                  onLockedClick={openUpgradeModal}
+                  disabled={isFree || book?.status === "complete"}
+                  onLockedClick={book?.status === "complete" ? undefined : openUpgradeModal}
+                  lockNode={
+                    book?.status === "complete" ? (
+                      <span title="Images are fully generated — create a new book to change the story."><Lock size={10} className="text-ink-soft" /></span>
+                    ) : (
+                      <PaidBadge inline />
+                    )
+                  }
                 />
                 <div className="flex flex-wrap gap-3 text-[11px] text-ink-soft pt-0.5">
                   <span className="flex items-center gap-1">

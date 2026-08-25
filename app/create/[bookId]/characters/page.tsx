@@ -7,8 +7,8 @@ import PaidBadge from "@/components/paywall/PaidBadge";
 import Card from "@/components/ui/Card";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
-import { getCharacters, generateCharacterImage, updateBookStatus, type Character } from "@/lib/supabase/queries";
-import { RefreshCw, Upload, Undo2, AlertCircle, Sparkles } from "lucide-react";
+import { getBook, getCharacters, generateCharacterImage, updateBookStatus, type Character } from "@/lib/supabase/queries";
+import { RefreshCw, Upload, Undo2, AlertCircle, Sparkles, Lock } from "lucide-react";
 
 export default function CharactersStep({ params }: { params: Promise<{ bookId: string }> }) {
   const { bookId } = use(params);
@@ -17,6 +17,7 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
   const isFree = tier === "none";
 
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [bookComplete, setBookComplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [regenCounts, setRegenCounts] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -52,6 +53,9 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
         setCharacters(list);
         setLoading(false);
 
+        const { data: bookData } = await getBook(supabase, bookId);
+        if (bookData) setBookComplete(bookData.status === "complete");
+
         // Auto-generate reference images for anyone who doesn't have one yet.
         for (const c of list) {
           if (!c.reference_image_url && !c.custom_image_url) {
@@ -67,6 +71,7 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
 
   const regenerateImage = (id: string) => {
     if (isFree) return openUpgradeModal();
+    if (bookComplete) return;
     setRegenCounts((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
     generateFor(id);
   };
@@ -74,6 +79,7 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
   const handleUpload = async (id: string, file: File | undefined) => {
     if (!file) return;
     if (isFree) return openUpgradeModal();
+    if (bookComplete) return;
 
     setBusy(id);
     setErrors((e) => ({ ...e, [id]: "" }));
@@ -100,6 +106,7 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
   };
 
   const revertToAI = async (id: string) => {
+    if (bookComplete) return;
     const supabase = createClient();
     await supabase.from("characters").update({ custom_image_url: null }).eq("id", id);
     setCharacters((prev) => prev.map((c) => (c.id === id ? { ...c, custom_image_url: null } : c)));
@@ -173,28 +180,39 @@ export default function CharactersStep({ params }: { params: Promise<{ bookId: s
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                   <button
                     onClick={() => regenerateImage(c.id)}
-                    disabled={isBusy}
-                    className="relative inline-flex items-center gap-1.5 text-xs font-medium text-teal-text hover:text-teal disabled:opacity-50"
+                    disabled={isBusy || bookComplete}
+                    title={bookComplete ? "Images are fully generated — create a new book to change characters." : undefined}
+                    className="relative inline-flex items-center gap-1.5 text-xs font-medium text-teal-text hover:text-teal disabled:opacity-50 disabled:hover:text-teal-text"
                   >
                     <RefreshCw size={12} />
                     {isFree ? "Regenerate image" : freeUsed ? "Regenerate again (1 credit)" : "Regenerate image (1 free)"}
-                    {isFree && <PaidBadge inline />}
+                    {isFree && !bookComplete && <PaidBadge inline />}
+                    {bookComplete && <Lock size={10} className="text-ink-soft" />}
                   </button>
 
                   {c.custom_image_url ? (
                     <button
                       onClick={() => revertToAI(c.id)}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft hover:text-ink"
+                      disabled={bookComplete}
+                      title={bookComplete ? "Images are fully generated — create a new book to change characters." : undefined}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft hover:text-ink disabled:opacity-50"
                     >
                       <Undo2 size={12} /> Use AI image
                     </button>
                   ) : (
                     <button
-                      onClick={() => (isFree ? openUpgradeModal() : fileInputs.current[c.id]?.click())}
-                      className="relative inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft hover:text-ink"
+                      onClick={() => {
+                        if (bookComplete) return;
+                        if (isFree) return openUpgradeModal();
+                        fileInputs.current[c.id]?.click();
+                      }}
+                      disabled={bookComplete}
+                      title={bookComplete ? "Images are fully generated — create a new book to change characters." : undefined}
+                      className="relative inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft hover:text-ink disabled:opacity-50 disabled:hover:text-ink-soft"
                     >
                       <Upload size={12} /> Upload your own
-                      {isFree && <PaidBadge inline />}
+                      {isFree && !bookComplete && <PaidBadge inline />}
+                      {bookComplete && <Lock size={10} className="text-ink-soft" />}
                     </button>
                   )}
                   <input

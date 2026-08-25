@@ -327,7 +327,7 @@ export default function CreateStep1() {
                     <OptionButton active={format === "classic"} onClick={() => setFormat("classic")} className="text-left !py-2.5">
                       <span className="font-medium block">Classic</span>
                       <span className={clsx("text-xs", format === "classic" ? "text-white/80" : "text-ink-soft")}>
-                        Lower cost
+                        One image per page
                       </span>
                     </OptionButton>
 
@@ -357,7 +357,10 @@ export default function CreateStep1() {
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setLayout("image-left")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLayout("image-left");
+                          }}
                           className={clsx(
                             "rounded-lg p-2 border-2 transition-colors",
                             layout === "image-left" ? "border-teal bg-teal-tint/30" : "border-line hover:border-teal/50"
@@ -376,7 +379,10 @@ export default function CreateStep1() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setLayout("image-right")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLayout("image-right");
+                          }}
                           className={clsx(
                             "rounded-lg p-2 border-2 transition-colors",
                             layout === "image-right" ? "border-teal bg-teal-tint/30" : "border-line hover:border-teal/50"

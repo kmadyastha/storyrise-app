@@ -21,9 +21,19 @@ interface ReferenceImage {
 /**
  * Generates one image from a text prompt, optionally grounded on reference
  * images (e.g. a character's existing reference photo, so a page
- * illustration keeps that character consistent). Returns raw PNG bytes.
+ * illustration keeps that character consistent). Returns the raw image
+ * bytes AND the real mimeType Gemini reports — critically, NOT assumed to
+ * be PNG. Earlier code discarded this and every caller hardcoded
+ * "image/png", which was harmless for in-browser <img> tags (browsers
+ * content-sniff the real format regardless of a wrong label) but broke
+ * pdf-lib's embedPng() — which validates the real PNG file signature and
+ * throws if the bytes aren't genuinely PNG — silently producing a blank
+ * placeholder in every PDF/PPTX/Etsy export.
  */
-export async function generateImage(prompt: string, references: ReferenceImage[] = []): Promise<Buffer> {
+export async function generateImage(
+  prompt: string,
+  references: ReferenceImage[] = []
+): Promise<{ bytes: Buffer; mimeType: string }> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not set on the server");
   }
@@ -55,7 +65,8 @@ export async function generateImage(prompt: string, references: ReferenceImage[]
     throw new Error("Gemini didn't return an image — try again.");
   }
 
-  return Buffer.from(imagePart.inlineData.data, "base64");
+  const mimeType = imagePart.inlineData.mimeType || "image/png";
+  return { bytes: Buffer.from(imagePart.inlineData.data, "base64"), mimeType };
 }
 
 /** Fetches an existing image URL and returns it as base64, for use as a reference. */
@@ -75,10 +86,10 @@ export async function urlToBase64(url: string): Promise<ReferenceImage> {
  * upload subject to storage.objects RLS policies a second time for no real
  * security benefit, and was the actual cause of "new row violates row-level
  * security policy" failures on upload. */
-export async function uploadGeneratedImage(path: string, bytes: Buffer): Promise<string> {
+export async function uploadGeneratedImage(path: string, bytes: Buffer, contentType: string): Promise<string> {
   const admin = createAdminClient();
   const { error } = await admin.storage.from("book-assets").upload(path, bytes, {
-    contentType: "image/png",
+    contentType,
     upsert: true,
   });
   if (error) throw new Error(`Upload failed: ${error.message}`);

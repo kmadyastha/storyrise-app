@@ -16,10 +16,12 @@ const STEPS = [
 ];
 
 // "create" (step 1) has no bookId yet — it's a different route shape
-// (/create, not /create/[bookId]/...) — everything else follows the
-// bookId-scoped pattern.
+// (/create, not /create/[bookId]/...) that always starts a BRAND NEW book.
+// Once inside an existing book's flow, it must never be clickable — going
+// "back" to it wouldn't edit the current book's idea, it would abandon it
+// and start over, which is exactly the bad behavior this guards against.
 function routeForStep(key: string, bookId?: string) {
-  if (key === "create") return "/create";
+  if (key === "create") return bookId ? null : "/create";
   if (!bookId) return null;
   return `/create/${bookId}/${key}`;
 }

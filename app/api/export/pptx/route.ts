@@ -3,6 +3,7 @@ import PptxGenJS from "pptxgenjs";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { fetchExportData, fetchImage, sanitizeFilename, WATERMARK_TEXT } from "@/lib/export/exportData";
+import { normalizeImageForEmbed } from "@/lib/export/normalizeImageForEmbed";
 import { bookSizes } from "@/lib/dummy-data";
 
 // pptxgenjs's Node output (nodebuffer) needs the Node runtime, not Edge.
@@ -10,12 +11,14 @@ export const runtime = "nodejs";
 // See app/api/generate-story/route.ts for why this is needed.
 export const maxDuration = 60;
 
-function toDataUrl(img: { bytes: Uint8Array; contentType: string } | null): string | null {
+async function toDataUrl(img: { bytes: Uint8Array; contentType: string } | null): Promise<string | null> {
   if (!img) return null;
-  // pptxgenjs wants a clean image/png or image/jpeg data URL — normalize
-  // anything else to png rather than pass through an unrecognized mime type.
-  const mime = img.contentType.includes("jpeg") || img.contentType.includes("jpg") ? "image/jpeg" : "image/png";
-  return `data:${mime};base64,${Buffer.from(img.bytes).toString("base64")}`;
+  // The stored content-type can be wrong for images uploaded before the
+  // mimeType fix in lib/gemini.ts — sniff the real bytes instead of trusting
+  // it, so the data URL's mime prefix always genuinely matches what's inside.
+  const normalized = await normalizeImageForEmbed(img.bytes);
+  const mime = normalized.format === "jpeg" ? "image/jpeg" : "image/png";
+  return `data:${mime};base64,${normalized.bytes.toString("base64")}`;
 }
 
 export async function POST(request: Request) {
@@ -121,12 +124,15 @@ export async function POST(request: Request) {
     addWatermark(slide);
   }
 
-  // --- Story slides — same Classic/Immersive layout logic as the PDF export ---
+  // --- Story slides — one slide per story page, matching exactly what's
+  // shown in the in-app Preview (earlier version made two slides per story
+  // page for Classic, doubling the deck length and not matching what the
+  // customer had actually previewed). ---
   for (const storyPage of pages) {
     const imgData = await embed(storyPage.image_url);
+    const slide = pres.addSlide();
 
     if (book.format === "immersive") {
-      const slide = pres.addSlide();
       const imageOnRight = book.layout !== "image-left";
       const half = W / 2;
       const imgX = imageOnRight ? half : 0;
@@ -143,45 +149,35 @@ export async function POST(request: Request) {
         valign: "top",
         fontFace: "Arial",
       });
-      slide.addText(String(storyPage.page_number), {
-        x: 0,
-        y: H - 0.35,
-        w: W,
-        h: 0.3,
-        align: "center",
-        fontSize: 9,
-        color: "999999",
-      });
-      addWatermark(slide);
     } else {
-      const imgSlide = pres.addSlide();
-      addImageCover(imgSlide, imgData, 0, 0, W, H);
-      addWatermark(imgSlide);
+      addImageCover(slide, imgData, 0, 0, W, H);
 
-      const textSlide = pres.addSlide();
-      textSlide.background = { color: "FEFAF6" };
-      textSlide.addText(storyPage.narration, {
-        x: 0.6,
-        y: H / 2 - 0.6,
-        w: W - 1.2,
-        h: 1.2,
-        align: "center",
-        valign: "middle",
-        fontSize: 18,
+      // Caption strip along the bottom, matching the Preview page's white
+      // card sitting over the illustration.
+      const stripH = 1.3;
+      slide.addShape("rect", { x: 0, y: H - stripH, w: W, h: stripH, fill: { color: "FFFFFF", transparency: 6 } });
+      slide.addText(storyPage.narration, {
+        x: 0.4,
+        y: H - stripH,
+        w: W - 0.8,
+        h: stripH,
+        fontSize: 13,
         color: "262626",
+        valign: "middle",
         fontFace: "Arial",
       });
-      textSlide.addText(String(storyPage.page_number), {
-        x: 0,
-        y: H - 0.35,
-        w: W,
-        h: 0.3,
-        align: "center",
-        fontSize: 9,
-        color: "999999",
-      });
-      addWatermark(textSlide);
     }
+
+    slide.addText(String(storyPage.page_number), {
+      x: 0,
+      y: H - 0.35,
+      w: W,
+      h: 0.3,
+      align: "center",
+      fontSize: 9,
+      color: "999999",
+    });
+    addWatermark(slide);
   }
 
   const buffer = (await pres.write({ outputType: "nodebuffer" })) as Buffer;

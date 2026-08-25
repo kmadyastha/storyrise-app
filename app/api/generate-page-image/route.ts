@@ -88,8 +88,8 @@ export async function POST(request: Request) {
 
   let imageUrl: string;
   try {
-    const bytes = await generateImage(prompt, references);
-    imageUrl = await uploadGeneratedImage(`pages/${pageId}.png`, bytes);
+    const { bytes, mimeType } = await generateImage(prompt, references);
+    imageUrl = await uploadGeneratedImage(`pages/${pageId}.png`, bytes, mimeType);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Image generation failed";
     return NextResponse.json({ error: message }, { status: 502 });
