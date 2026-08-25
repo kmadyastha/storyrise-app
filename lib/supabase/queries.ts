@@ -156,17 +156,39 @@ export interface GenerateStoryResult {
   characters: { name: string; type: "human" | "non_human"; description: string }[];
 }
 
+/** Reads a fetch Response as JSON, but never throws a raw parse error
+ * (e.g. "Unexpected end of JSON input") at the caller. That specific error
+ * is what you get when the response body is empty or cut off mid-stream —
+ * almost always a serverless function timeout killing the request, not
+ * actually malformed JSON — so it's translated into a message that explains
+ * what likely happened instead of leaking a JS internals string to the user. */
+async function safeJsonResponse(res: Response): Promise<{ ok: boolean; data: Record<string, unknown> }> {
+  const text = await res.text();
+  try {
+    return { ok: res.ok, data: text ? JSON.parse(text) : {} };
+  } catch {
+    return {
+      ok: false,
+      data: {
+        error: res.ok
+          ? "Something went wrong reading the response — please try again."
+          : "The request took too long and was cut off — please try again (shorter books or fewer pages at once help).",
+      },
+    };
+  }
+}
+
 export async function generateStory(bookId: string): Promise<GenerateStoryResult> {
   const res = await fetch("/api/generate-story", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ bookId }),
   });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || "Failed to generate story");
+  const { ok, data } = await safeJsonResponse(res);
+  if (!ok) {
+    throw new Error((data.error as string) || "Failed to generate story");
   }
-  return data;
+  return data as unknown as GenerateStoryResult;
 }
 
 export async function generateCharacterImage(characterId: string): Promise<{ imageUrl: string }> {
@@ -175,9 +197,9 @@ export async function generateCharacterImage(characterId: string): Promise<{ ima
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ characterId }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to generate character image");
-  return data;
+  const { ok, data } = await safeJsonResponse(res);
+  if (!ok) throw new Error((data.error as string) || "Failed to generate character image");
+  return data as unknown as { imageUrl: string };
 }
 
 export async function generatePageImage(pageId: string): Promise<{ imageUrl: string }> {
@@ -186,9 +208,9 @@ export async function generatePageImage(pageId: string): Promise<{ imageUrl: str
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ pageId }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to generate page image");
-  return data;
+  const { ok, data } = await safeJsonResponse(res);
+  if (!ok) throw new Error((data.error as string) || "Failed to generate page image");
+  return data as unknown as { imageUrl: string };
 }
 
 export async function generateNarration(pageId: string, voice?: string): Promise<{ audioUrl: string }> {
@@ -197,9 +219,9 @@ export async function generateNarration(pageId: string, voice?: string): Promise
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ pageId, voice }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to generate narration");
-  return data;
+  const { ok, data } = await safeJsonResponse(res);
+  if (!ok) throw new Error((data.error as string) || "Failed to generate narration");
+  return data as unknown as { audioUrl: string };
 }
 
 export interface Cover {
@@ -238,7 +260,7 @@ export async function generateCover(input: GenerateCoverInput): Promise<{ cover:
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to save cover");
-  return data;
+  const { ok, data } = await safeJsonResponse(res);
+  if (!ok) throw new Error((data.error as string) || "Failed to save cover");
+  return data as unknown as { cover: Cover };
 }

@@ -7,6 +7,8 @@ import { bookSizes } from "@/lib/dummy-data";
 
 // pptxgenjs's Node output (nodebuffer) needs the Node runtime, not Edge.
 export const runtime = "nodejs";
+// See app/api/generate-story/route.ts for why this is needed.
+export const maxDuration = 60;
 
 function toDataUrl(img: { bytes: Uint8Array; contentType: string } | null): string | null {
   if (!img) return null;

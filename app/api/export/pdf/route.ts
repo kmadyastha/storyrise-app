@@ -7,6 +7,9 @@ import { bookSizes } from "@/lib/dummy-data";
 
 // pdf-lib and Buffer both need the Node runtime, not the Edge runtime.
 export const runtime = "nodejs";
+// See app/api/generate-story/route.ts for why this is needed — building a
+// full multi-page PDF (fetching every page's image) can exceed 10s.
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const { bookId, bookSizeId } = await request.json().catch(() => ({}));

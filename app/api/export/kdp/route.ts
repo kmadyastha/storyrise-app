@@ -11,6 +11,10 @@ import { bookSizes } from "@/lib/dummy-data";
 import { KDP_BLEED_IN, KDP_MIN_PAGES, KDP_BARCODE_BOX_IN, computeCoverSpread, computeKdpCreditCost } from "@/lib/export/kdpSpec";
 
 export const runtime = "nodejs";
+// See app/api/generate-story/route.ts for why this is needed — KDP export
+// fetches every page's image twice (interior + cover) and builds two PDFs
+// plus a zip, so it's the single most time-hungry route in the app.
+export const maxDuration = 60;
 
 const PT_PER_IN = 72;
 

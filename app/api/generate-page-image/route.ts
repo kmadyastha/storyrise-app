@@ -5,6 +5,9 @@ import { precheckCredits, chargeCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { validateAIInput, ValidationError, MAX_LENGTHS } from "@/lib/validation";
 
+// See app/api/generate-story/route.ts for why this is needed.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const { pageId } = await request.json();
 

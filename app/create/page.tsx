@@ -485,20 +485,20 @@ export default function CreateStep1() {
             ))}
           </div>
 
-          {/* hand-drawn flourish — sits in normal flow under the chip row so it
-              always stays correctly anchored, rather than absolutely positioned
-              against a row whose width shifts with viewport size */}
-          <div className="hidden lg:flex justify-end max-w-[560px] mx-auto mt-1 pr-6 text-teal-text/70">
-            <div className="flex items-start gap-1.5">
-              <svg width="46" height="34" viewBox="0 0 46 34" fill="none" className="shrink-0 mt-0.5">
+          {/* hand-drawn flourish — curves up toward the chip row above it,
+              arrowhead pointing up so it actually reads as "look up there"
+              instead of trailing off into empty space */}
+          <div className="hidden lg:flex justify-end max-w-[560px] mx-auto mt-1 pr-10 text-teal-text/70">
+            <div className="flex items-end gap-1.5">
+              <svg width="42" height="32" viewBox="0 0 42 32" fill="none" className="shrink-0 mb-1">
                 <path
-                  d="M6 4 C 24 2, 40 8, 40 24"
+                  d="M4 29 C 9 12, 22 5, 36 4"
                   stroke="currentColor"
                   strokeWidth="1.8"
                   strokeLinecap="round"
                   fill="none"
                 />
-                <path d="M40 24 L32 20 M40 24 L36 32" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M36 4 L28 3.5 M36 4 L33 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
               </svg>
               <span className="font-display text-sm italic">Try an idea above</span>
             </div>

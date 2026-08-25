@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_VOICE } from "@/lib/voices";
 import { precheckCredits, chargeCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rateLimit";
+
+// See app/api/generate-story/route.ts for why this is needed.
+export const maxDuration = 60;
 import { validateAIInput, ValidationError, MAX_LENGTHS } from "@/lib/validation";
 
 export async function POST(request: Request) {

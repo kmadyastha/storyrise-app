@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { precheckCredits, chargeCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rateLimit";
 
+// See app/api/generate-story/route.ts for why this is needed.
+export const maxDuration = 60;
+
 const MAX_TITLE_LENGTH = 200;
 const MAX_AUTHOR_LENGTH = 100;
 const MAX_BLURB_LENGTH = 1000;

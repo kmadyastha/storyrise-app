@@ -193,14 +193,14 @@ export default function HeroSection() {
               ))}
             </svg>
 
-            <div className="relative z-[2] w-full max-w-[460px] pb-6 drop-shadow-[0_30px_60px_rgba(0,0,0,0.15)] transition-transform hover:scale-[1.02] hover:-rotate-1 max-sm:max-w-[300px]">
+            <div className="relative z-[2] w-full max-w-[460px] aspect-[3/4] pb-6 drop-shadow-[0_30px_60px_rgba(0,0,0,0.15)] transition-transform hover:scale-[1.02] hover:-rotate-1 max-sm:max-w-[300px]">
               {heroData.map((slide, i) => (
                 <img
                   key={slide.theme}
                   src={slide.image}
                   alt="Child holding a personalized AI-generated storybook"
-                  className={`w-full h-auto block transition-opacity duration-500 ease-in-out ${
-                    i === activeIndex ? "opacity-100 relative" : "opacity-0 absolute inset-0"
+                  className={`absolute inset-0 w-full h-full object-cover object-bottom transition-opacity duration-500 ease-in-out ${
+                    i === activeIndex ? "opacity-100" : "opacity-0"
                   }`}
                 />
               ))}

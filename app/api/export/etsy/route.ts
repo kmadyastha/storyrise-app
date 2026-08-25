@@ -6,6 +6,8 @@ import { buildInteriorPdf } from "@/lib/export/buildInteriorPdf";
 import { bookSizes } from "@/lib/dummy-data";
 
 export const runtime = "nodejs";
+// See app/api/generate-story/route.ts for why this is needed.
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const { bookId, bookSizeId } = await request.json().catch(() => ({}));

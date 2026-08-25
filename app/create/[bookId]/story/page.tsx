@@ -242,7 +242,7 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
       <StepShell activeKey="story" title={generating ? "Writing your story…" : "Loading…"} onBack="/create" hideFooter>
         <div className="flex items-center gap-3 text-ink-soft text-sm">
           <Sparkles size={16} className="animate-pulse text-teal-text" />
-          {generating ? "Claude is writing your story table — this takes a few seconds." : "Loading your book…"}
+          {generating ? "StoryRise is writing your story table — this can take up to a minute for longer books." : "Loading your book…"}
         </div>
       </StepShell>
     );

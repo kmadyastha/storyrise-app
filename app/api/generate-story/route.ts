@@ -5,6 +5,13 @@ import { precheckCredits, chargeCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { validateAIInput, isLikelyRefusal, ValidationError, MAX_LENGTHS } from "@/lib/validation";
 
+// Vercel's default Node function timeout (10s on Hobby) is well under what a
+// full multi-page Claude story generation can take — without this, the
+// function gets killed mid-response and the client sees a truncated/empty
+// body, which surfaces as a confusing "Unexpected end of JSON input" error
+// instead of the real problem. 60s is the Hobby-plan ceiling.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const { bookId } = await request.json();
 
