@@ -179,6 +179,51 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
 
       {/* big centered main image */}
       <div className="max-w-2xl mx-auto">
+        {book?.format === "immersive" ? (
+          <div className="relative rounded-2xl overflow-hidden border border-line bg-paper aspect-[4/3] flex">
+            <div className="w-1/2 h-full relative">
+              {page.image_url ? (
+                <img
+                  src={page.image_url}
+                  alt={`Page ${page.page_number}`}
+                  className={clsx("w-full h-full object-cover", regenerating && "opacity-40")}
+                />
+              ) : (
+                <div className="w-full h-full grid place-items-center text-ink-soft text-sm bg-teal-tint/30">
+                  <div className="text-center px-3">
+                    <AlertTriangle size={20} className="mx-auto mb-2 text-tangerine-text" />
+                    Couldn&rsquo;t be illustrated
+                  </div>
+                </div>
+              )}
+              {regenerating && (
+                <div className="absolute inset-0 grid place-items-center">
+                  <RefreshCw size={22} className="animate-spin text-ink-soft" />
+                </div>
+              )}
+            </div>
+            <div className="w-1/2 h-full p-5 flex items-center bg-white overflow-y-auto">
+              <p className="text-sm leading-relaxed">{page.narration}</p>
+            </div>
+
+            <button
+              onClick={() => goTo(active - 1)}
+              disabled={active === 0}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-sm grid place-items-center disabled:opacity-0 transition-opacity"
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={() => goTo(active + 1)}
+              disabled={active === pages.length - 1}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-sm grid place-items-center disabled:opacity-0 transition-opacity"
+              aria-label="Next page"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        ) : (
         <div className="relative rounded-2xl overflow-hidden border border-line bg-paper aspect-[4/3]">
           {page.image_url ? (
             <img
@@ -220,6 +265,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
             <ChevronRight size={18} />
           </button>
         </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
           <div className="flex items-center gap-2">

@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
   const prompt = `Children's picture-book illustration. Scene: ${page.image_description}. Setting: ${
     page.setting ?? "unspecified"
-  }. Warm, friendly art style suitable for a kids' storybook, full-bleed illustration, no text or lettering in the image itself.${characterNote}`;
+  }. Warm, friendly art style suitable for a kids' storybook, full-bleed illustration, no text or lettering in the image itself. Each character should appear exactly once, fully and correctly formed — no duplicated heads, limbs, or bodies, no extra or malformed body parts.${characterNote}`;
 
   let imageUrl: string;
   try {

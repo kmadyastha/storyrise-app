@@ -147,7 +147,11 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount }
                         <Droplet size={10} /> Watermarked
                       </span>
                     )}
-                    {!live && !locked && !disabledByPages ? (
+                    {disabledByPages ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
+                        <AlertCircle size={13} /> Needs more pages
+                      </span>
+                    ) : !live && !locked ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
                         <Clock size={13} /> Coming soon
                       </span>

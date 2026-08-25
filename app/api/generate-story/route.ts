@@ -112,16 +112,22 @@ Respond with ONLY valid JSON matching this exact shape, no markdown code fences,
 
   let raw: string;
   try {
+    // Fixed at 4096 regardless of page count used to work fine for ~20-page
+    // books but wasn't enough for larger ones — a 50-page book's narration +
+    // image descriptions + characters genuinely needs more room, and running
+    // out mid-generation produces truncated, invalid JSON. Scales with page
+    // count, capped at a safe ceiling for this model.
+    const maxTokens = Math.min(8000, 1500 + book.page_count * 130);
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 4096,
+      max_tokens: maxTokens,
       messages: [{ role: "user", content: prompt }],
     });
     const textBlock = message.content.find((b) => b.type === "text");
     raw = textBlock && "text" in textBlock ? textBlock.text : "";
   } catch (err) {
-    // Claude call itself failed — nothing to charge for, the user got nothing.
-    const message = err instanceof Error ? err.message : "Claude API request failed";
+    // The AI call itself failed — nothing to charge for, the user got nothing.
+    const message = err instanceof Error ? err.message : "Story generation failed — please try again.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
@@ -151,7 +157,7 @@ Respond with ONLY valid JSON matching this exact shape, no markdown code fences,
         { status: 422 }
       );
     }
-    return NextResponse.json({ error: "Claude's response wasn't valid JSON — try regenerating." }, { status: 502 });
+    return NextResponse.json({ error: "Something went wrong writing your story — please try regenerating." }, { status: 502 });
   }
 
   // Only charge once we know Claude actually produced a usable story.

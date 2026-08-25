@@ -12,7 +12,6 @@ import { createBook } from "@/lib/supabase/queries";
 import {
   Sparkles,
   ArrowRight,
-  Image as ImageIcon,
   Lock,
   Minus,
   Plus,
@@ -112,7 +111,10 @@ export default function CreateStep1() {
   const [age, setAge] = useState<string>(ageGroups[1]);
   const [pageCount, setPageCount] = useState(isFree ? 6 : 20);
   const [format, setFormat] = useState<"classic" | "immersive">("classic");
-  const [layout, setLayout] = useState<"image-left" | "image-right">("image-left");
+  // Layout picker was removed (quick-hack per explicit product decision — the
+  // image-left/image-right selection buttons had a real, unresolved click
+  // interaction bug) — image-left is now the only Immersive layout.
+  const layout: "image-left" | "image-right" = "image-left";
   const [artStyle, setArtStyle] = useState(artStyles[0]);
   const [setting, setSetting] = useState(settings[0]);
   const [rhyme, setRhyme] = useState(false);
@@ -272,7 +274,7 @@ export default function CreateStep1() {
                               ? "bg-white border-line text-ink-soft/50"
                               : pageCount === p.count
                               ? "bg-teal text-white border-teal"
-                              : p.caption
+                              : p.caption && (isFree || p.count !== 6)
                               ? "bg-tangerine-tint border-tangerine/30 hover:border-tangerine"
                               : "bg-white border-line hover:border-teal hover:bg-teal-tint/40"
                           )}
@@ -281,7 +283,7 @@ export default function CreateStep1() {
                             {p.count}
                             {locked && <Lock size={9} />}
                           </span>
-                          {p.caption && (
+                          {p.caption && (isFree || p.count !== 6) && (
                             <span className={clsx("text-[9px] leading-none", pageCount === p.count ? "text-white/80" : "text-tangerine-text")}>
                               {p.caption}
                             </span>
@@ -352,55 +354,7 @@ export default function CreateStep1() {
                   </div>
 
                   {format === "immersive" && !isFree && (
-                    <div className="pt-1">
-                      <p className="text-[11px] font-medium text-ink-soft mb-1.5">Layout</p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLayout("image-left");
-                          }}
-                          className={clsx(
-                            "rounded-lg p-2 border-2 transition-colors",
-                            layout === "image-left" ? "border-teal bg-teal-tint/30" : "border-line hover:border-teal/50"
-                          )}
-                        >
-                          <div className="flex gap-1 h-8 pointer-events-none">
-                            <span className="flex-1 rounded bg-teal-tint grid place-items-center">
-                              <ImageIcon size={12} className="text-teal-text" />
-                            </span>
-                            <span className="flex-1 rounded bg-paper flex flex-col justify-center gap-0.5 px-1">
-                              <span className="h-0.5 bg-line rounded-full" />
-                              <span className="h-0.5 bg-line rounded-full w-2/3" />
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-ink-soft block mt-1 pointer-events-none">Image left</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLayout("image-right");
-                          }}
-                          className={clsx(
-                            "rounded-lg p-2 border-2 transition-colors",
-                            layout === "image-right" ? "border-teal bg-teal-tint/30" : "border-line hover:border-teal/50"
-                          )}
-                        >
-                          <div className="flex gap-1 h-8 pointer-events-none">
-                            <span className="flex-1 rounded bg-paper flex flex-col justify-center gap-0.5 px-1">
-                              <span className="h-0.5 bg-line rounded-full" />
-                              <span className="h-0.5 bg-line rounded-full w-2/3" />
-                            </span>
-                            <span className="flex-1 rounded bg-teal-tint grid place-items-center">
-                              <ImageIcon size={12} className="text-teal-text" />
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-ink-soft block mt-1 pointer-events-none">Image right</span>
-                        </button>
-                      </div>
-                    </div>
+                    <p className="text-[11px] text-ink-soft pt-1">Image on the left, text on the right.</p>
                   )}
                 </div>
               )}
