@@ -199,7 +199,7 @@ export default function HeroSection() {
                   key={slide.theme}
                   src={slide.image}
                   alt="Child holding a personalized AI-generated storybook"
-                  className={`absolute inset-0 w-full h-full object-cover object-bottom transition-opacity duration-500 ease-in-out ${
+                  className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-500 ease-in-out ${
                     i === activeIndex ? "opacity-100" : "opacity-0"
                   }`}
                 />
