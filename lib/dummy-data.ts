@@ -291,6 +291,6 @@ export const exportOptions = [
   { id: "video_narrated", label: "Narrated video", desc: "Immersive only. Every page voiced.", immersiveOnly: true },
   { id: "video_silent", label: "Silent video", desc: "Immersive only. Music, no narration.", immersiveOnly: true },
   { id: "audiobook", label: "Audiobook", desc: "Every page's narration, stitched into one listen.", always: true },
-  { id: "kdp", label: "KDP print file", desc: "Requires 15+ pages. Trim, spine & barcode-ready.", minPages: 15 },
+  { id: "kdp", label: "KDP print file", desc: "Requires 24+ pages. Trim, spine & barcode-ready.", minPages: 24 },
   { id: "etsy", label: "Etsy digital PDF", desc: "Same interior, no KDP padding.", always: true },
 ];

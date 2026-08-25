@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type CreditOperation = "story" | "character_image" | "page_image" | "narration" | "cover";
+export type CreditOperation = "story" | "character_image" | "page_image" | "narration" | "cover" | "kdp" | "etsy";
 
 const CREDIT_COST: Record<CreditOperation, number> = {
   story: 1,
@@ -8,6 +8,13 @@ const CREDIT_COST: Record<CreditOperation, number> = {
   page_image: 1,
   narration: 1,
   cover: 1,
+  // KDP's real cost is page-count-tiered (9/17/20 — see lib/export/kdpSpec.ts
+  // computeKdpCreditCost) and always passed as an explicit override below;
+  // this default only matters if a caller ever forgets to pass one.
+  kdp: 9,
+  // Etsy digital export is a paid-tier feature but not a separately metered
+  // one — same as pdf/pptx, it's included rather than charged per-export.
+  etsy: 0,
 };
 
 interface CheckResult {
@@ -23,7 +30,8 @@ interface CheckResult {
 export async function precheckCredits(
   userId: string,
   operation: CreditOperation,
-  isFreeTrial: boolean
+  isFreeTrial: boolean,
+  costOverride?: number
 ): Promise<CheckResult> {
   if (isFreeTrial) {
     if (operation === "narration") {
@@ -32,7 +40,7 @@ export async function precheckCredits(
     return { allowed: true };
   }
 
-  const cost = CREDIT_COST[operation];
+  const cost = costOverride ?? CREDIT_COST[operation];
   const admin = createAdminClient();
   const { data: profile } = await admin.from("profiles").select("credits").eq("id", userId).single();
   const balance = profile?.credits ?? 0;
@@ -51,10 +59,18 @@ export async function precheckCredits(
  * call has genuinely succeeded and produced something usable. Free-trial
  * operations are a no-op here (nothing to deduct).
  */
-export async function chargeCredits(userId: string, bookId: string, operation: CreditOperation, isFreeTrial: boolean) {
+export async function chargeCredits(
+  userId: string,
+  bookId: string,
+  operation: CreditOperation,
+  isFreeTrial: boolean,
+  costOverride?: number
+) {
   if (isFreeTrial) return;
 
-  const cost = CREDIT_COST[operation];
+  const cost = costOverride ?? CREDIT_COST[operation];
+  if (cost === 0) return;
+
   const admin = createAdminClient();
   const { data: profile } = await admin.from("profiles").select("credits").eq("id", userId).single();
   const balance = profile?.credits ?? 0;

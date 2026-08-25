@@ -13,15 +13,15 @@ interface Props {
   onClose: () => void;
   bookId: string;
   format: "classic" | "immersive";
+  pageCount: number;
 }
 
-// Only these two actually generate a real file today — everything else
-// (video, audiobook, KDP, Etsy) needs the Fly.io worker (Phase 5) or the
-// print-spec work (Phase 4) and isn't wired yet. Shown as "Coming soon"
-// rather than faking a download, per/paid or not.
-const LIVE_EXPORTS = new Set(["pdf", "pptx"]);
+// Video/audiobook still need the Fly.io render pipeline (Phase 5) and aren't
+// wired yet. Everything else — pdf, pptx, kdp, etsy — now generates a real
+// file. Shown as "Coming soon" rather than faking a download, per/paid or not.
+const LIVE_EXPORTS = new Set(["pdf", "pptx", "kdp", "etsy"]);
 
-export default function ExportPanel({ open, onClose, bookId, format }: Props) {
+export default function ExportPanel({ open, onClose, bookId, format, pageCount }: Props) {
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -29,6 +29,7 @@ export default function ExportPanel({ open, onClose, bookId, format }: Props) {
   const [bookSizeId, setBookSizeId] = useState<string>(bookSizes.find((s) => "default" in s && s.default)?.id ?? bookSizes[0].id);
 
   const isLocked = (id: string) => isFree && !["pdf", "pptx"].includes(id);
+  const belowMinPages = (opt: (typeof exportOptions)[number]) => "minPages" in opt && pageCount < (opt.minPages as number);
 
   const handleExport = async (id: string) => {
     if (isLocked(id)) return openUpgradeModal();
@@ -116,9 +117,10 @@ export default function ExportPanel({ open, onClose, bookId, format }: Props) {
             <div className="grid sm:grid-cols-2 gap-3">
               {exportOptions.map((opt) => {
                 const disabledByFormat = opt.immersiveOnly && format !== "immersive";
-                const locked = isLocked(opt.id) && !disabledByFormat;
+                const disabledByPages = belowMinPages(opt);
+                const locked = isLocked(opt.id) && !disabledByFormat && !disabledByPages;
                 const live = LIVE_EXPORTS.has(opt.id);
-                const disabled = disabledByFormat || (!live && !locked);
+                const disabled = disabledByFormat || disabledByPages || (!live && !locked);
                 return (
                   <button
                     key={opt.id}
@@ -134,14 +136,18 @@ export default function ExportPanel({ open, onClose, bookId, format }: Props) {
                     {locked && <PaidBadge />}
                     <h3 className="font-display font-semibold mb-1 text-sm">{opt.label}</h3>
                     <p className="text-xs text-ink-soft mb-3">
-                      {disabledByFormat ? "Classic books export as PDF, PPTX, or KDP print files." : opt.desc}
+                      {disabledByFormat
+                        ? "Classic books export as PDF, PPTX, or KDP print files."
+                        : disabledByPages
+                        ? `Needs at least ${(opt as { minPages: number }).minPages} pages — this book has ${pageCount}.`
+                        : opt.desc}
                     </p>
                     {isFree && (opt.id === "pdf" || opt.id === "pptx") && (
                       <span className="inline-flex items-center gap-1 text-[11px] text-tangerine-text bg-tangerine-tint rounded-full px-2 py-0.5 w-fit mb-2">
                         <Droplet size={10} /> Watermarked
                       </span>
                     )}
-                    {!live && !locked ? (
+                    {!live && !locked && !disabledByPages ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
                         <Clock size={13} /> Coming soon
                       </span>
