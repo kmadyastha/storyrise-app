@@ -240,7 +240,7 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
 
   if (loading || generating) {
     return (
-      <StepShell activeKey="story" title={generating ? "Writing your story…" : "Loading…"} onBack="/create" hideFooter>
+      <StepShell activeKey="story" title={generating ? "Writing your story…" : "Loading…"} onBack="/create" hideFooter wide>
         {generating ? (
           <GenerationLoader
             messages={[
