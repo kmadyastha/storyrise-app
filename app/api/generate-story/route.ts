@@ -9,8 +9,12 @@ import { validateAIInput, isLikelyRefusal, ValidationError, MAX_LENGTHS } from "
 // full multi-page Claude story generation can take — without this, the
 // function gets killed mid-response and the client sees a truncated/empty
 // body, which surfaces as a confusing "Unexpected end of JSON input" error
-// instead of the real problem. 60s is the Hobby-plan ceiling.
-export const maxDuration = 60;
+// instead of the real problem. Fluid Compute (the default on Vercel projects
+// created after April 2025) raises Hobby's real ceiling to 300s, not the
+// old 60s — 120 gives real headroom for large books without maxing it out.
+// Requires Fluid Compute to be enabled on this project (Settings → Functions
+// → Fluid Compute) — without it, any value above 60 fails the build.
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const { bookId } = await request.json();

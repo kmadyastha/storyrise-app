@@ -9,6 +9,7 @@ import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
 import { getBook, getStoryPages, updateStoryPage, generateStory, type Book, type StoryPage } from "@/lib/supabase/queries";
 import { RefreshCw, Users, MapPin, Pencil, Check, X, BookOpen, ImageIcon, Save, AlertCircle, Sparkles } from "lucide-react";
+import GenerationLoader from "@/components/ui/GenerationLoader";
 import clsx from "clsx";
 
 const NARRATION_MAX_WORDS = 40;
@@ -240,10 +241,23 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
   if (loading || generating) {
     return (
       <StepShell activeKey="story" title={generating ? "Writing your story…" : "Loading…"} onBack="/create" hideFooter>
-        <div className="flex items-center gap-3 text-ink-soft text-sm">
-          <Sparkles size={16} className="animate-pulse text-teal-text" />
-          {generating ? "StoryRise is writing your story table — this can take up to a minute for longer books." : "Loading your book…"}
-        </div>
+        {generating ? (
+          <GenerationLoader
+            messages={[
+              "Reading your idea…",
+              "Dreaming up characters…",
+              "Sketching out the plot…",
+              "Writing each page…",
+              "This can take up to a minute or two for longer books…",
+              "Almost there — polishing the story…",
+            ]}
+          />
+        ) : (
+          <div className="flex items-center gap-3 text-ink-soft text-sm">
+            <Sparkles size={16} className="animate-pulse text-teal-text" />
+            Loading your book…
+          </div>
+        )}
       </StepShell>
     );
   }

@@ -13,8 +13,10 @@ import { KDP_BLEED_IN, KDP_MIN_PAGES, KDP_BARCODE_BOX_IN, computeCoverSpread, co
 export const runtime = "nodejs";
 // See app/api/generate-story/route.ts for why this is needed — KDP export
 // fetches every page's image twice (interior + cover) and builds two PDFs
-// plus a zip, so it's the single most time-hungry route in the app.
-export const maxDuration = 60;
+// plus a zip, so it's the single most time-hungry route in the app. Raised
+// past the old 60s figure now that Fluid Compute's real Hobby ceiling is
+// 300s (requires Fluid Compute enabled — Settings → Functions).
+export const maxDuration = 100;
 
 const PT_PER_IN = 72;
 
