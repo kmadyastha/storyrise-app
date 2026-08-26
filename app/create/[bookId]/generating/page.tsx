@@ -33,7 +33,8 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
 
     for (const page of pagesToRun) {
       try {
-        await generatePageImage(page.id);
+        const { imageUrl } = await generatePageImage(page.id);
+        setPages((prev) => prev.map((p) => (p.id === page.id ? { ...p, image_url: imageUrl } : p)));
       } catch (err) {
         failures.push({ id: page.id, pageNumber: page.page_number, error: err instanceof Error ? err.message : "Failed" });
         setFailedPages((f) => [...f, failures[failures.length - 1]]);
@@ -97,7 +98,8 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
   const totalToIllustrate = pages.filter((p) => !p.image_url).length || pages.length;
 
   return (
-    <section className="mx-auto max-w-md px-5 py-24 text-center">
+    <section className="mx-auto max-w-2xl px-5 py-16 text-center">
+      <div className="max-w-md mx-auto">
       <div className="relative w-24 h-24 mx-auto mb-6">
         <motion.div
           animate={
@@ -217,10 +219,41 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
         </div>
       )}
 
+      </div>
+
       {phase === "error" && (
         <div className="mt-6 flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl p-4 text-left">
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
           <span>We couldn&rsquo;t load this book. Try going back and generating your story again.</span>
+        </div>
+      )}
+
+      {pages.length > 0 && phase !== "error" && (
+        <div className="mt-10 text-left">
+          <p className="text-xs font-medium text-ink-soft mb-3">{pages.length} PAGES</p>
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
+            {pages.map((p) => {
+              const failed = failedPages.some((f) => f.id === p.id);
+              return (
+                <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden border border-line bg-paper">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt={`Page ${p.page_number}`} className="w-full h-full object-cover" />
+                  ) : failed ? (
+                    <div className="w-full h-full grid place-items-center bg-red-50">
+                      <AlertCircle size={16} className="text-red-500" />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full grid place-items-center">
+                      <RefreshCw size={14} className="text-ink-soft/50 animate-spin" />
+                    </div>
+                  )}
+                  <span className="absolute bottom-0.5 right-0.5 bg-black/50 text-white text-[9px] rounded px-1">
+                    {p.page_number}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </section>

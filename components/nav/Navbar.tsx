@@ -62,6 +62,15 @@ export default function Navbar() {
       </Link>
 
       <div className="hidden md:flex items-center gap-9">
+        {loggedIn && (
+          <Link
+            href="/dashboard"
+            className="relative text-[15px] font-medium text-[#555] no-underline transition-colors hover:text-teal-text after:content-[''] after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-teal after:rounded-sm after:transition-all hover:after:w-full"
+          >
+            My books
+          </Link>
+        )}
+
         {navLinks.map((link) => (
           <a
             key={link.label}
@@ -110,15 +119,6 @@ export default function Navbar() {
             </div>
           )}
         </div>
-
-        {loggedIn && (
-          <Link
-            href="/dashboard"
-            className="relative text-[15px] font-medium text-[#555] no-underline transition-colors hover:text-teal-text after:content-[''] after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-teal after:rounded-sm after:transition-all hover:after:w-full"
-          >
-            My books
-          </Link>
-        )}
       </div>
 
       <div className="flex items-center gap-4">

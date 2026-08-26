@@ -14,6 +14,10 @@ const ROUTE_LIMITS: Record<string, number> = {
   "export-pptx": 10,
   "export-kdp": 6,
   "export-etsy": 10,
+  "export-video-narrated": 3,
+  "export-video-silent": 3,
+  "export-audiobook": 5,
+  "export-flipbook": 10,
 };
 
 export async function checkRateLimit(

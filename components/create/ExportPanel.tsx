@@ -16,10 +16,18 @@ interface Props {
   pageCount: number;
 }
 
-// Video/audiobook still need the Fly.io render pipeline (Phase 5) and aren't
-// wired yet. Everything else — pdf, pptx, kdp, etsy — now generates a real
-// file. Shown as "Coming soon" rather than faking a download, per/paid or not.
-const LIVE_EXPORTS = new Set(["pdf", "pptx", "kdp", "etsy"]);
+// Every export option now generates a real file — nothing left to gate as
+// "Coming soon".
+const LIVE_EXPORTS = new Set(["pdf", "pptx", "flipbook", "kdp", "etsy", "video_narrated", "video_silent", "audiobook"]);
+
+// Most option ids match their route folder exactly (pdf -> /api/export/pdf).
+// The two video ones use underscores in their id (matching the worker's
+// jobType contract, already tested) but hyphens in their route folder —
+// this maps between the two rather than renaming either.
+const EXPORT_ROUTE: Record<string, string> = {
+  video_narrated: "video-narrated",
+  video_silent: "video-silent",
+};
 
 export default function ExportPanel({ open, onClose, bookId, format, pageCount }: Props) {
   const { tier, openUpgradeModal } = useApp();
@@ -33,12 +41,13 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount }
 
   const handleExport = async (id: string) => {
     if (isLocked(id)) return openUpgradeModal();
-    if (!LIVE_EXPORTS.has(id)) return; // "Coming soon" cards aren't clickable — see disabled state below
+    if (!LIVE_EXPORTS.has(id)) return; // shouldn't happen now, but keep the fallback
 
     setError(null);
     setDownloading(id);
     try {
-      const res = await fetch(`/api/export/${id}`, {
+      const routePath = EXPORT_ROUTE[id] ?? id;
+      const res = await fetch(`/api/export/${routePath}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookId, bookSizeId }),

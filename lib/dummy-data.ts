@@ -288,8 +288,9 @@ export const titlePlacements = ["Top-third banner", "Centered overlay", "Bottom 
 export const exportOptions = [
   { id: "pdf", label: "PDF", desc: "Print-friendly, any format.", always: true },
   { id: "pptx", label: "PPTX", desc: "Editable slide format.", always: true },
+  { id: "flipbook", label: "Flipbook (HTML)", desc: "A self-contained file you can flip through offline, forever.", always: true },
   { id: "video_narrated", label: "Narrated video", desc: "Immersive only. Every page voiced.", immersiveOnly: true },
-  { id: "video_silent", label: "Silent video", desc: "Immersive only. Music, no narration.", immersiveOnly: true },
+  { id: "video_silent", label: "Silent video", desc: "Immersive only. No narration.", immersiveOnly: true },
   { id: "audiobook", label: "Audiobook", desc: "Every page's narration, stitched into one listen.", always: true },
   { id: "kdp", label: "KDP print file", desc: "Requires 24+ pages. Trim, spine & barcode-ready.", minPages: 24 },
   { id: "etsy", label: "Etsy digital PDF", desc: "Same interior, no KDP padding.", always: true },

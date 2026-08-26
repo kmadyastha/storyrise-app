@@ -8,7 +8,7 @@ import IllustrationPlaceholder from "@/components/ui/IllustrationPlaceholder";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
 import { getUserBooks, type BookWithCoverImage } from "@/lib/supabase/queries";
-import { Plus, Loader2, Droplet, BookOpen } from "lucide-react";
+import { Plus, Loader2, Droplet, BookOpen, Trash2, X } from "lucide-react";
 
 const statusLabel: Record<string, string> = {
   complete: "Complete",
@@ -60,6 +60,23 @@ export default function DashboardPage() {
   const { tier, credits, openUpgradeModal, user } = useApp();
   const [books, setBooks] = useState<BookWithCoverImage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDelete = async (bookId: string) => {
+    setDeletingId(bookId);
+    setDeleteError(null);
+    const supabase = createClient();
+    const { error } = await supabase.from("books").delete().eq("id", bookId);
+    setDeletingId(null);
+    if (error) {
+      setDeleteError(error.message || "Couldn't delete this book — please try again.");
+      return;
+    }
+    setBooks((prev) => prev.filter((b) => b.id !== bookId));
+    setConfirmingId(null);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +124,15 @@ export default function DashboardPage() {
         </Card>
       )}
 
+      {deleteError && (
+        <div className="mb-6 flex items-center justify-between gap-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl p-3.5">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="text-red-400 hover:text-red-600">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[0, 1, 2].map((i) => (
@@ -135,7 +161,50 @@ export default function DashboardPage() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {books.map((b) => (
-            <Link key={b.id} href={resumeRoute(b.id, b.status)}>
+            <div key={b.id} className="relative group">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setConfirmingId(b.id);
+                }}
+                aria-label="Delete book"
+                className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/90 hover:bg-white shadow-sm grid place-items-center text-ink-soft hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Trash2 size={13} />
+              </button>
+
+              {confirmingId === b.id && (
+                <div className="absolute inset-0 z-20 rounded-[20px] bg-black/60 flex flex-col items-center justify-center gap-3 p-4 text-center">
+                  <p className="text-white text-sm font-medium">Delete &ldquo;{b.title || "Untitled story"}&rdquo;?</p>
+                  <p className="text-white/70 text-xs -mt-2">This can&rsquo;t be undone.</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setConfirmingId(null);
+                      }}
+                      className="text-xs font-medium bg-white/20 hover:bg-white/30 text-white rounded-full px-3.5 py-1.5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(b.id);
+                      }}
+                      disabled={deletingId === b.id}
+                      className="text-xs font-medium bg-red-500 hover:bg-red-600 text-white rounded-full px-3.5 py-1.5 disabled:opacity-60"
+                    >
+                      {deletingId === b.id ? "Deleting…" : "Delete"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <Link href={resumeRoute(b.id, b.status)}>
               <Card padded={false} className="overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all">
                 <div className="relative aspect-[4/3]">
                   {b.cover_image_url ? (
@@ -174,6 +243,7 @@ export default function DashboardPage() {
                 </div>
               </Card>
             </Link>
+            </div>
           ))}
         </div>
       )}
