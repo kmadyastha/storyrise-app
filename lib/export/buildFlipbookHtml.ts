@@ -1,6 +1,19 @@
 import { fetchImage } from "@/lib/export/exportData";
 import { normalizeImageForEmbed } from "@/lib/export/normalizeImageForEmbed";
 import type { Book, StoryPage, Cover } from "@/lib/supabase/queries";
+import fs from "fs";
+import path from "path";
+
+/** Base64-embedded so the exported file stays genuinely self-contained and
+ * offline-capable — a CDN/Google Fonts link would silently stop rendering
+ * once the file is opened without internet, defeating the point of it
+ * being downloadable "forever." ~200KB, negligible next to the embedded
+ * illustration images already in this file. */
+function loadFredokaBase64(): string | null {
+  const fontPath = path.join(process.cwd(), "assets/fonts/Fredoka-Variable.ttf");
+  if (!fs.existsSync(fontPath)) return null;
+  return fs.readFileSync(fontPath).toString("base64");
+}
 
 function escapeHtml(s: string) {
   return s
@@ -38,14 +51,18 @@ export async function buildFlipbookHtml(opts: BuildFlipbookOptions): Promise<str
 
   const coverImg = await toDataUri(cover?.image_url ?? pages[0]?.image_url ?? null);
   const pageImages = await Promise.all(pages.map((p) => toDataUri(p.image_url)));
+  const fredokaBase64 = loadFredokaBase64();
 
   const slides: string[] = [];
+
+  const placement = cover?.title_placement ?? "center";
+  const captionPosition = placement === "top" ? "top: 6%;" : placement === "bottom" ? "bottom: 6%;" : "top: 42%;";
 
   // Cover slide
   slides.push(`
     <section class="fb-slide">
       <div class="fb-art">${coverImg ? `<img src="${coverImg}" alt="Cover" />` : `<div class="fb-blank"></div>`}</div>
-      <div class="fb-cover-caption">
+      <div class="fb-cover-caption" style="${captionPosition}">
         <h1>${escapeHtml(title)}</h1>
         ${author ? `<p class="fb-author">by ${escapeHtml(author)}</p>` : ""}
       </div>
@@ -71,6 +88,11 @@ export async function buildFlipbookHtml(opts: BuildFlipbookOptions): Promise<str
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(title)}</title>
 <style>
+  ${fredokaBase64 ? `@font-face {
+    font-family: 'Fredoka';
+    src: url(data:font/ttf;base64,${fredokaBase64}) format('truetype');
+    font-weight: 300 700;
+  }` : ""}
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0; height: 100%;
@@ -114,7 +136,7 @@ export async function buildFlipbookHtml(opts: BuildFlipbookOptions): Promise<str
   .fb-overlay-bottom, .fb-overlay-top {
     position: absolute;
     left: 5%; right: 5%;
-    background: rgba(0,0,0,0.75);
+    background: rgba(0,0,0,0.9);
     color: #fff;
     padding: 16px 20px;
     border-radius: 12px;
@@ -127,15 +149,23 @@ export async function buildFlipbookHtml(opts: BuildFlipbookOptions): Promise<str
   .fb-overlay-top { top: 6%; }
   .fb-cover-caption {
     position: absolute;
-    left: 0; right: 0; top: 40%;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 85%;
     text-align: center;
-    background: rgba(255,255,255,0.94);
-    padding: 24px 20px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 16px;
+    padding: 20px 28px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.18);
   }
   .fb-cover-caption h1 {
-    margin: 0 0 6px; font-size: 32px; color: #1a1a1a;
+    margin: 0;
+    font-family: ${fredokaBase64 ? "'Fredoka', " : ""}-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    color: #1a1a1a;
   }
-  .fb-author { margin: 0; color: #5a5a5a; font-size: 14px; }
+  .fb-author { margin: 8px 0 0; color: #5a5a5a; font-size: 14px; }
   .fb-nav {
     position: fixed; top: 50%; transform: translateY(-50%);
     width: 46px; height: 46px; border-radius: 50%;
