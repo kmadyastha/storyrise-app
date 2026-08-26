@@ -362,7 +362,7 @@ export default function CreateStep1() {
                   </div>
 
                   {format === "immersive" && !isFree && (
-                    <p className="text-[11px] text-ink-soft pt-1">Image on the left, text on the right.</p>
+                    <p className="text-[11px] text-ink-soft pt-1">Full illustration, with the story overlaid on top.</p>
                   )}
                 </div>
               )}

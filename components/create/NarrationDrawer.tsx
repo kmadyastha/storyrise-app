@@ -42,9 +42,11 @@ export default function NarrationDrawer({ open, onClose, pages, onPageNarrated, 
   const [previewingVoice, setPreviewingVoice] = useState(false);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  const [runTotal, setRunTotal] = useState(0);
+  const [runCompleted, setRunCompleted] = useState(0);
+
   const missing = pages.filter((p) => !p.hasNarration && !doneIds.has(p.id));
   const totalMissing = pages.filter((p) => !p.hasNarration).length;
-  const completedCount = totalMissing - missing.length;
 
   const previewVoice = async () => {
     if (previewingVoice) return;
@@ -70,13 +72,22 @@ export default function NarrationDrawer({ open, onClose, pages, onPageNarrated, 
   const generateAll = async () => {
     setGenerating(true);
     setFailed([]);
+    // Fixed for the whole run, captured once — must NOT be read live from
+    // `missing`/`totalMissing` later, since those are derived from the
+    // `pages` prop, which shrinks in lockstep as onPageNarrated fires for
+    // each success. That was exactly why the progress readout showed the
+    // total counting down instead of completed counting up.
+    const pagesToRun = missing;
+    setRunTotal(pagesToRun.length);
+    setRunCompleted(0);
+    let completed = 0;
     // Tracked locally (not via React state) specifically to avoid a stale-
     // closure bug: state setters don't update local variables within the
     // same function run, so checking doneIds/failed (the state) right after
     // the loop would read pre-loop values, not what actually just happened.
     const newlyFailed: { id: string; pageNumber: number; error: string }[] = [];
 
-    for (const page of missing) {
+    for (const page of pagesToRun) {
       try {
         const { audioUrl } = await generateNarration(page.id, voice);
         setDoneIds((prev) => new Set(prev).add(page.id));
@@ -86,6 +97,8 @@ export default function NarrationDrawer({ open, onClose, pages, onPageNarrated, 
         newlyFailed.push(failure);
         setFailed((f) => [...f, failure]);
       }
+      completed += 1;
+      setRunCompleted(completed);
     }
 
     setGenerating(false);
@@ -239,7 +252,7 @@ export default function NarrationDrawer({ open, onClose, pages, onPageNarrated, 
                 >
                   <Mic size={15} />
                   {generating
-                    ? `Narrating… (${completedCount}/${totalMissing})`
+                    ? `Narrating… (${runCompleted}/${runTotal})`
                     : `Generate narration for ${totalMissing} page${totalMissing === 1 ? "" : "s"} — ${totalMissing} credit${
                         totalMissing === 1 ? "" : "s"
                       }`}

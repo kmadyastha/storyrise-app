@@ -20,6 +20,7 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
 
   const [pages, setPages] = useState<StoryPage[]>([]);
   const [illustratedCount, setIllustratedCount] = useState(0);
+  const [totalToIllustrate, setTotalToIllustrate] = useState(0);
   const [failedPages, setFailedPages] = useState<{ id: string; pageNumber: number; error: string }[]>([]);
   const [phase, setPhase] = useState<"loading" | "illustrating" | "done" | "error">("loading");
   const started = useRef(false);
@@ -27,6 +28,12 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
   const runIllustration = async (pagesToRun: StoryPage[]) => {
     setPhase("illustrating");
     setFailedPages([]);
+    setIllustratedCount(0);
+    // Captured once, fixed for the whole run — this must NOT be recomputed
+    // from live pages state later, since that state updates (via setPages
+    // below) as each page completes, which would make the denominator
+    // shrink in lockstep with progress instead of staying the real total.
+    setTotalToIllustrate(pagesToRun.length);
     updateBookStatus(bookId, "generating").catch(() => {});
     let completed = 0;
     const failures: { id: string; pageNumber: number; error: string }[] = [];
@@ -95,7 +102,8 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
     runIllustration(retryPages);
   };
 
-  const totalToIllustrate = pages.filter((p) => !p.image_url).length || pages.length;
+  // totalToIllustrate is now a fixed state value set once in runIllustration —
+  // see the comment there for why it can't be derived from live pages state.
 
   return (
     <section className="mx-auto max-w-2xl px-5 py-16 text-center">
