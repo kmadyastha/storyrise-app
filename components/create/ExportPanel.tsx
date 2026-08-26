@@ -25,6 +25,12 @@ interface Props {
    * or audiobook export — if it isn't, the narration drawer opens instead
    * of just showing an error telling the user to go do it elsewhere. */
   pages: ExportPanelPage[];
+  /** Forwarded straight through to NarrationDrawer — lets the Preview page
+   * keep its own page list in sync the instant narration succeeds, rather
+   * than staying stale until a manual refresh (which was causing pages to
+   * silently get re-narrated, and re-charged, even after already being
+   * done via this exact drawer). */
+  onPageNarrated?: (pageId: string, audioUrl: string) => void;
 }
 
 // Every export option now generates a real file — nothing left to gate as
@@ -43,7 +49,7 @@ const EXPORT_ROUTE: Record<string, string> = {
 // These two need every page narrated before they can actually render.
 const NEEDS_NARRATION = new Set(["video_narrated", "audiobook"]);
 
-export default function ExportPanel({ open, onClose, bookId, format, pageCount, pages }: Props) {
+export default function ExportPanel({ open, onClose, bookId, format, pageCount, pages, onPageNarrated }: Props) {
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -226,6 +232,7 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
             onClose={() => setNarrationDrawerFor(null)}
             pages={narrationPages}
             exportKind={narrationDrawerFor === "audiobook" ? "audiobook" : "video"}
+            onPageNarrated={onPageNarrated}
             onAllNarrated={() => {
               const id = narrationDrawerFor;
               setNarrationDrawerFor(null);

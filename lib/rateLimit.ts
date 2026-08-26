@@ -18,6 +18,7 @@ const ROUTE_LIMITS: Record<string, number> = {
   "export-video-silent": 3,
   "export-audiobook": 5,
   "export-flipbook": 10,
+  "preview-voice": 15,
 };
 
 export async function checkRateLimit(

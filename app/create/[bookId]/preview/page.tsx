@@ -5,6 +5,7 @@ import StepShell from "@/components/create/StepShell";
 import PaidBadge from "@/components/paywall/PaidBadge";
 import ExportPanel from "@/components/create/ExportPanel";
 import CoverDrawer from "@/components/create/CoverDrawer";
+import NarrationDrawer from "@/components/create/NarrationDrawer";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
 import { getBook, getStoryPages, generatePageImage, generateNarration, getCover, type Book, type StoryPage, type Cover } from "@/lib/supabase/queries";
@@ -39,6 +40,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [coverOpen, setCoverOpen] = useState(false);
+  const [narrateAllOpen, setNarrateAllOpen] = useState(false);
   const [coverGenerated, setCoverGenerated] = useState(false);
 
   const [voice, setVoice] = useState<string>(DEFAULT_VOICE);
@@ -302,9 +304,18 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
               ) : (
                 <Mic size={13} />
               )}
-              {narrating ? "Generating…" : page.audio_url ? (playing ? "Pause" : "Play narration") : "Generate narration"}
+              {narrating ? "Narrating…" : page.audio_url ? (playing ? "Pause" : "Play narration") : "Narrate this page"}
               {isFree && <PaidBadge inline />}
             </button>
+
+            {!isFree && (
+              <button
+                onClick={() => setNarrateAllOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-teal-text hover:text-teal px-1"
+              >
+                Narrate all pages
+              </button>
+            )}
           </div>
           <span className="text-[11px] text-ink-soft">
             Page {active + 1} of {pages.length}
@@ -372,6 +383,18 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
         format={book?.format ?? "classic"}
         pageCount={book?.page_count ?? pages.length}
         pages={pages.map((p) => ({ id: p.id, page_number: p.page_number, audio_url: p.audio_url }))}
+        onPageNarrated={(pageId, audioUrl) =>
+          setPages((prev) => prev.map((p) => (p.id === pageId ? { ...p, audio_url: audioUrl } : p)))
+        }
+      />
+      <NarrationDrawer
+        open={narrateAllOpen}
+        onClose={() => setNarrateAllOpen(false)}
+        exportKind="book"
+        pages={pages.map((p) => ({ id: p.id, pageNumber: p.page_number, hasNarration: !!p.audio_url }))}
+        onPageNarrated={(pageId, audioUrl) =>
+          setPages((prev) => prev.map((p) => (p.id === pageId ? { ...p, audio_url: audioUrl } : p)))
+        }
       />
       <CoverDrawer
         open={coverOpen}
