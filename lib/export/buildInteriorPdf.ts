@@ -87,7 +87,16 @@ export async function buildInteriorPdf(opts: BuildInteriorPdfOptions): Promise<U
   function drawWrappedText(
     page: PDFPage,
     text: string,
-    opts2: { x: number; y: number; width: number; size: number; lineHeight: number; align?: "left" | "center"; font?: PDFFont }
+    opts2: {
+      x: number;
+      y: number;
+      width: number;
+      size: number;
+      lineHeight: number;
+      align?: "left" | "center";
+      font?: PDFFont;
+      color?: ReturnType<typeof rgb>;
+    }
   ) {
     const font = opts2.font ?? bodyFont;
     const lines = wrapText(text, opts2.width, (s) => font.widthOfTextAtSize(s, opts2.size));
@@ -95,7 +104,7 @@ export async function buildInteriorPdf(opts: BuildInteriorPdfOptions): Promise<U
     for (const line of lines) {
       const lineWidth = font.widthOfTextAtSize(line, opts2.size);
       const x = opts2.align === "center" ? opts2.x + (opts2.width - lineWidth) / 2 : opts2.x;
-      page.drawText(line, { x, y: cursorY, size: opts2.size, font, color: rgb(0.15, 0.15, 0.15) });
+      page.drawText(line, { x, y: cursorY, size: opts2.size, font, color: opts2.color ?? rgb(0.15, 0.15, 0.15) });
       cursorY -= opts2.lineHeight;
     }
     return cursorY;
@@ -142,18 +151,34 @@ export async function buildInteriorPdf(opts: BuildInteriorPdfOptions): Promise<U
     const page = pdf.addPage([pageWidth, pageHeight]);
 
     if (book.format === "immersive") {
-      const imageOnRight = book.layout !== "image-left";
-      const half = pageWidth / 2;
-      const imgX = imageOnRight ? half : 0;
-      const textX = imageOnRight ? 0 : half;
+      // Full-bleed image, exactly like Classic — the difference is a
+      // translucent dark box holding the narration directly over the art,
+      // not a hard split hiding half the illustration. Matches the in-app
+      // Preview page's Immersive treatment 1:1, per the explicit "webapp
+      // and PDF should look the same" requirement.
+      drawImageCover(page, img, 0, 0, pageWidth, pageHeight);
 
-      drawImageCover(page, img, imgX, 0, half, pageHeight);
+      const overlayX = margin * 0.6;
+      const overlayWidth = pageWidth - margin * 1.2;
+      const lines = wrapText(storyPage.narration, overlayWidth - 24, (s) => bodyFont.widthOfTextAtSize(s, 14));
+      const overlayHeight = lines.length * 19 + 24;
+      const overlayY = pageHeight - margin * 0.6 - overlayHeight;
+
+      page.drawRectangle({
+        x: overlayX,
+        y: overlayY,
+        width: overlayWidth,
+        height: overlayHeight,
+        color: rgb(0, 0, 0),
+        opacity: 0.75,
+      });
       drawWrappedText(page, storyPage.narration, {
-        x: textX + margin * 0.6,
-        y: pageHeight - margin,
-        width: half - margin * 1.2,
-        size: 15,
-        lineHeight: 21,
+        x: overlayX + 12,
+        y: overlayY + overlayHeight - 20,
+        width: overlayWidth - 24,
+        size: 14,
+        lineHeight: 19,
+        color: rgb(1, 1, 1),
       });
     } else {
       drawImageCover(page, img, 0, 0, pageWidth, pageHeight);

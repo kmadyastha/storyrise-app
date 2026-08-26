@@ -180,31 +180,32 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
       {/* big centered main image */}
       <div className="max-w-2xl mx-auto">
         {book?.format === "immersive" ? (
-          <div className="relative rounded-2xl overflow-hidden border border-line bg-paper aspect-[4/3] flex">
-            <div className="w-1/2 h-full relative">
-              {page.image_url ? (
-                <img
-                  src={page.image_url}
-                  alt={`Page ${page.page_number}`}
-                  className={clsx("w-full h-full object-cover", regenerating && "opacity-40")}
-                />
-              ) : (
-                <div className="w-full h-full grid place-items-center text-ink-soft text-sm bg-teal-tint/30">
-                  <div className="text-center px-3">
-                    <AlertTriangle size={20} className="mx-auto mb-2 text-tangerine-text" />
-                    Couldn&rsquo;t be illustrated
-                  </div>
+          <div className="relative rounded-2xl overflow-hidden border border-line bg-paper aspect-[4/3]">
+            {page.image_url ? (
+              <img
+                src={page.image_url}
+                alt={`Page ${page.page_number}`}
+                className={clsx("w-full h-full object-cover", regenerating && "opacity-40")}
+              />
+            ) : (
+              <div className="w-full h-full grid place-items-center text-ink-soft text-sm bg-teal-tint/30">
+                <div className="text-center px-3">
+                  <AlertTriangle size={20} className="mx-auto mb-2 text-tangerine-text" />
+                  Couldn&rsquo;t be illustrated
                 </div>
-              )}
-              {regenerating && (
-                <div className="absolute inset-0 grid place-items-center">
-                  <RefreshCw size={22} className="animate-spin text-ink-soft" />
-                </div>
-              )}
+              </div>
+            )}
+            {/* Text overlaid directly on the full image — a 75%-opaque dark
+                backing (25% see-through) keeps it legible against any
+                artwork without hiding the illustration itself. */}
+            <div className="absolute inset-x-4 top-4 bg-black/75 rounded-xl px-4 py-3">
+              <p className="text-sm leading-relaxed text-white">{page.narration}</p>
             </div>
-            <div className="w-1/2 h-full p-5 flex items-center bg-white overflow-y-auto">
-              <p className="text-sm leading-relaxed">{page.narration}</p>
-            </div>
+            {regenerating && (
+              <div className="absolute inset-0 grid place-items-center">
+                <RefreshCw size={22} className="animate-spin text-white" />
+              </div>
+            )}
 
             <button
               onClick={() => goTo(active - 1)}

@@ -29,15 +29,14 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
     setFailedPages([]);
     updateBookStatus(bookId, "generating").catch(() => {});
     let completed = 0;
+    const failures: { id: string; pageNumber: number; error: string }[] = [];
 
     for (const page of pagesToRun) {
       try {
         await generatePageImage(page.id);
       } catch (err) {
-        setFailedPages((f) => [
-          ...f,
-          { id: page.id, pageNumber: page.page_number, error: err instanceof Error ? err.message : "Failed" },
-        ]);
+        failures.push({ id: page.id, pageNumber: page.page_number, error: err instanceof Error ? err.message : "Failed" });
+        setFailedPages((f) => [...f, failures[failures.length - 1]]);
       }
       completed += 1;
       setIllustratedCount(completed);
@@ -47,7 +46,13 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
     await supabase.from("books").update({ status: "complete", generated_at: new Date().toISOString() }).eq("id", bookId);
 
     setPhase("done");
-    setTimeout(() => router.push(`/create/${bookId}/preview`), 700);
+    // Only auto-advance when everything genuinely succeeded — with failures,
+    // redirecting immediately meant the failure summary and retry button
+    // (rendered on this same page) flashed by in under a second before
+    // anyone could see or use them.
+    if (failures.length === 0) {
+      setTimeout(() => router.push(`/create/${bookId}/preview`), 700);
+    }
   };
 
   useEffect(() => {
@@ -202,6 +207,12 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
             className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-text hover:text-teal"
           >
             <RefreshCw size={12} /> Retry failed pages
+          </button>
+          <button
+            onClick={() => router.push(`/create/${bookId}/preview`)}
+            className="ml-4 inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft hover:text-ink"
+          >
+            Continue to Preview anyway
           </button>
         </div>
       )}

@@ -7,15 +7,13 @@ import Card from "@/components/ui/Card";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
 import { getBook, getCharacters, getStoryPages, updateBookStatus, type Book, type StoryPage } from "@/lib/supabase/queries";
-import { Sparkles } from "lucide-react";
-import clsx from "clsx";
+import { Sparkles, Users } from "lucide-react";
 
 export default function QuoteStep({ params }: { params: Promise<{ bookId: string }> }) {
   const { bookId } = use(params);
   const router = useRouter();
   const { tier } = useApp();
   const isFree = tier === "none";
-  const [multiMode, setMultiMode] = useState(false);
 
   const [book, setBook] = useState<Book | null>(null);
   const [characterCount, setCharacterCount] = useState(0);
@@ -96,86 +94,35 @@ export default function QuoteStep({ params }: { params: Promise<{ bookId: string
   // Real, per-book calculation — matches the actual credit model used at
   // generation time (lib/credits.ts): 1 credit for the story, 1 per
   // character reference image, 1 per page illustration. Multi-character
-  // pages (flagged by Claude during story generation) can either render
-  // cheaply in the default single-character framing, or cost an extra
-  // credit each for genuine full multi-character scenes.
+  // pages currently render at the same flat per-page rate as any other page
+  // (the generation routes don't apply a cost override for them) — an
+  // earlier version of this quote screen offered a "full multi-character"
+  // option at a 2x surcharge, but that choice was never actually persisted
+  // or enforced at charge time, so it silently never affected billing.
+  // Removed rather than left promising something the system doesn't do.
   const multiCharacterPages = pages.filter((p) => p.multi_character);
-  const baseCredits = 1 + characterCount + pages.length;
-  const surcharge = multiCharacterPages.length;
-  const total = multiMode ? baseCredits + surcharge : baseCredits;
-
-  // No multi-character pages at all — the whole framing choice doesn't
-  // apply, so don't show a confusing decision with nothing to decide.
-  if (multiCharacterPages.length === 0) {
-    return (
-      <StepShell
-        activeKey="quote"
-        title="Your credit quote"
-        onBack={`/create/${bookId}/characters`}
-        onNext={goToGenerating}
-        nextLabel={`Generate storybook — ${baseCredits} credits`}
-        bookId={bookId}
-      >
-        <Card className="flex items-center justify-between bg-ink text-white">
-          <span className="text-sm flex items-center gap-2">
-            <Sparkles size={15} /> Total credit cost
-          </span>
-          <span className="font-display text-xl font-semibold">{baseCredits} credits</span>
-        </Card>
-        <p className="text-xs text-ink-soft mt-3">
-          {pages.length} page{pages.length === 1 ? "" : "s"} + {characterCount} character reference
-          {characterCount === 1 ? "" : "s"} + 1 for the story itself.
-        </p>
-      </StepShell>
-    );
-  }
+  const total = 1 + characterCount + pages.length;
 
   return (
     <StepShell
       activeKey="quote"
       title="Your credit quote"
-      subtitle={`${multiCharacterPages.length} page${
-        multiCharacterPages.length === 1 ? "" : "s"
-      } suggest multiple characters together. Choose how to render them before generating.`}
       onBack={`/create/${bookId}/characters`}
       onNext={goToGenerating}
       nextLabel={`Generate storybook — ${total} credits`}
       bookId={bookId}
     >
       <div className="space-y-4">
-        <button
-          onClick={() => setMultiMode(false)}
-          className={clsx(
-            "w-full text-left rounded-2xl border p-4",
-            !multiMode ? "border-teal bg-teal-tint" : "border-line hover:border-teal"
-          )}
-        >
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-sm">Generate anyway (single-character framing)</span>
-            <span className="text-sm font-display font-semibold">{baseCredits} credits</span>
-          </div>
-          <p className="text-xs text-ink-soft mt-1">
-            Cheaper — same-frame technique (over-the-shoulder, cropped second character) keeps scenes readable.
-          </p>
-        </button>
-
-        <button
-          onClick={() => setMultiMode(true)}
-          className={clsx(
-            "w-full text-left rounded-2xl border p-4",
-            multiMode ? "border-teal bg-teal-tint" : "border-line hover:border-teal"
-          )}
-        >
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-sm">
-              Enable full multi-character for these {multiCharacterPages.length} slides
+        {multiCharacterPages.length > 0 && (
+          <Card className="bg-teal-tint border-teal/20 flex items-start gap-2.5 text-sm text-ink-soft">
+            <Users size={16} className="text-teal-text shrink-0 mt-0.5" />
+            <span>
+              {multiCharacterPages.length} page{multiCharacterPages.length === 1 ? "" : "s"} feature multiple characters
+              together — rendered using a same-frame technique (over-the-shoulder, cropped second character) at the same
+              rate as any other page.
             </span>
-            <span className="text-sm font-display font-semibold">{baseCredits + surcharge} credits</span>
-          </div>
-          <p className="text-xs text-ink-soft mt-1">
-            2x rate applies only to the {multiCharacterPages.length} affected slide{multiCharacterPages.length === 1 ? "" : "s"}.
-          </p>
-        </button>
+          </Card>
+        )}
 
         <Card className="flex items-center justify-between bg-ink text-white">
           <span className="text-sm flex items-center gap-2">
@@ -183,6 +130,11 @@ export default function QuoteStep({ params }: { params: Promise<{ bookId: string
           </span>
           <span className="font-display text-xl font-semibold">{total} credits</span>
         </Card>
+
+        <p className="text-xs text-ink-soft">
+          {pages.length} page{pages.length === 1 ? "" : "s"} + {characterCount} character reference
+          {characterCount === 1 ? "" : "s"} + 1 for the story itself.
+        </p>
       </div>
     </StepShell>
   );

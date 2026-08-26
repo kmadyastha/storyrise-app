@@ -133,20 +133,22 @@ export async function POST(request: Request) {
     const slide = pres.addSlide();
 
     if (book.format === "immersive") {
-      const imageOnRight = book.layout !== "image-left";
-      const half = W / 2;
-      const imgX = imageOnRight ? half : 0;
-      const textX = imageOnRight ? 0.3 : half + 0.3;
+      // Full-bleed image, exactly like Classic — a translucent dark box
+      // holds the narration directly over the art instead of a hard split
+      // hiding half the illustration. Matches the PDF export and in-app
+      // Preview 1:1.
+      addImageCover(slide, imgData, 0, 0, W, H);
 
-      addImageCover(slide, imgData, imgX, 0, half, H);
+      const overlayH = 1.6;
+      slide.addShape("rect", { x: 0.3, y: 0.3, w: W - 0.6, h: overlayH, fill: { color: "000000", transparency: 25 } });
       slide.addText(storyPage.narration, {
-        x: textX,
-        y: 0.4,
-        w: half - 0.6,
-        h: H - 0.8,
-        fontSize: 15,
-        color: "262626",
-        valign: "top",
+        x: 0.5,
+        y: 0.3,
+        w: W - 1.0,
+        h: overlayH,
+        fontSize: 14,
+        color: "FFFFFF",
+        valign: "middle",
         fontFace: "Arial",
       });
     } else {

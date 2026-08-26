@@ -10,7 +10,7 @@ const faqs = [
   },
   {
     q: "What's the difference between Classic and Immersive?",
-    a: "Classic shows one full illustration per page with the story text as a caption underneath — a traditional picture-book look. Immersive splits each page with the image on one side and text on the other, and is the only format that supports video export.",
+    a: "Classic shows one full illustration per page with the story text as a caption underneath — a traditional picture-book look. Immersive keeps the illustration full-bleed too, with the narration overlaid directly on the art in a translucent text box, and is the only format that supports video export.",
   },
   {
     q: "Can I really publish to Amazon KDP?",

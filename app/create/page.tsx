@@ -100,7 +100,7 @@ function AccordionSection({
 
 export default function CreateStep1() {
   const router = useRouter();
-  const { tier, openUpgradeModal, user, openLoginModal } = useApp();
+  const { tier, openUpgradeModal, user, openLoginModal, authLoading } = useApp();
   const isFree = tier === "none";
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -126,6 +126,14 @@ export default function CreateStep1() {
     if (!idea.trim()) return;
     if (!user) {
       openLoginModal();
+      return;
+    }
+    if (authLoading) {
+      // tier defaults to "none" until the real profile finishes loading —
+      // submitting before then would bake an incorrect isFreeTrial=true
+      // into this book permanently (every future credit check for it would
+      // wrongly treat a paid book as free, silently never charging).
+      setCreateError("Still loading your account — please try again in a moment.");
       return;
     }
 
