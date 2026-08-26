@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
+import fs from "fs";
+import path from "path";
 import JSZip from "jszip";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -93,10 +96,17 @@ export async function POST(request: Request) {
   const spineWidthPt = spineWidthIn * PT_PER_IN;
 
   const coverPdf = await PDFDocument.create();
+  coverPdf.registerFontkit(fontkit);
   coverPdf.setTitle(`${book.title || "Untitled"} — KDP Cover`);
   coverPdf.setProducer("StoryRise");
   const bodyFont = await coverPdf.embedFont(StandardFonts.Helvetica);
-  const titleFont = await coverPdf.embedFont(StandardFonts.HelveticaBold);
+  // Spine text is small, rotated, and meant to be read on an actual
+  // physical printed book — bold Helvetica stays there for legibility.
+  // The front cover title is large and is where the brand's actual
+  // typography should show, so it gets the real Fredoka font instead.
+  const spineFont = await coverPdf.embedFont(StandardFonts.HelveticaBold);
+  const fredokaPath = path.join(process.cwd(), "assets/fonts/Fredoka-Variable.ttf");
+  const titleFont = fs.existsSync(fredokaPath) ? await coverPdf.embedFont(fs.readFileSync(fredokaPath)) : spineFont;
 
   async function embed(url: string | null | undefined) {
     const fetched = await fetchImage(url);
@@ -186,43 +196,52 @@ export async function POST(request: Request) {
       x: spineX + spineWidthPt / 2 + 5,
       y: fullHeightPt / 2 - bodyFont.widthOfTextAtSize(spineTitle, 10) / 2,
       size: 10,
-      font: titleFont,
+      font: spineFont,
       color: rgb(1, 1, 1),
       rotate: degrees(90),
     });
   }
 
-  // Front cover — art + title band, same treatment as the digital cover preview.
+  // Front cover — art + title card, same treatment as the digital cover preview.
   drawFit(frontX, 0, trimWidthPt + bleedPt, fullHeightPt);
   {
-    const bandHeight = 110;
-    page.drawRectangle({
-      x: frontX,
-      y: fullHeightPt / 2 - bandHeight / 2,
-      width: trimWidthPt + bleedPt,
-      height: bandHeight,
-      color: rgb(1, 1, 1),
-      opacity: 0.92,
-    });
-    const frontTextWidth = trimWidthPt - textSafeMargin;
-    const lines = wrapText(title, frontTextWidth, (s) => titleFont.widthOfTextAtSize(s, 26));
-    let cursorY = fullHeightPt / 2 + 14;
+    const titleSize = 26;
+    const authorLine = cover?.author ? `by ${cover.author}` : null;
+    const cardPadX = 24;
+    const cardPadTop = 22;
+    const cardPadBottom = authorLine ? 34 : 18;
+    const frontTextWidth = trimWidthPt - textSafeMargin - cardPadX * 2;
+
+    const lines = wrapText(title, frontTextWidth, (s) => titleFont.widthOfTextAtSize(s, titleSize));
+    const lineHeight = titleSize * 1.15;
+    const textBlockWidth = Math.max(...lines.map((l) => titleFont.widthOfTextAtSize(l, titleSize)));
+    const cardWidth = Math.min(trimWidthPt - textSafeMargin, textBlockWidth + cardPadX * 2);
+    const cardHeight = lines.length * lineHeight + cardPadTop + cardPadBottom;
+    const cardX = frontX + bleedPt / 2 + (trimWidthPt - cardWidth) / 2;
+
+    const placement = cover?.title_placement ?? "center";
+    const cardY =
+      placement === "top" ? fullHeightPt - textSafeMargin - cardHeight : placement === "bottom" ? textSafeMargin : fullHeightPt / 2 - cardHeight / 2;
+
+    page.drawRectangle({ x: cardX, y: cardY, width: cardWidth, height: cardHeight, color: rgb(1, 1, 1), opacity: 0.95 });
+
+    let cursorY = cardY + cardHeight - cardPadTop - titleSize * 0.85;
     for (const line of lines) {
-      const lineWidth = titleFont.widthOfTextAtSize(line, 26);
+      const lineWidth = titleFont.widthOfTextAtSize(line, titleSize);
       page.drawText(line, {
-        x: frontX + bleedPt / 2 + (trimWidthPt - lineWidth) / 2,
+        x: cardX + (cardWidth - lineWidth) / 2,
         y: cursorY,
-        size: 26,
+        size: titleSize,
         font: titleFont,
         color: rgb(0.1, 0.1, 0.1),
       });
-      cursorY -= 30;
+      cursorY -= lineHeight;
     }
-    if (cover?.author) {
-      const byline = `by ${cover.author}`;
-      page.drawText(byline, {
-        x: frontX + bleedPt / 2 + (trimWidthPt - bodyFont.widthOfTextAtSize(byline, 13)) / 2,
-        y: fullHeightPt / 2 - bandHeight / 2 + 16,
+    if (authorLine) {
+      const authorWidth = bodyFont.widthOfTextAtSize(authorLine, 13);
+      page.drawText(authorLine, {
+        x: cardX + (cardWidth - authorWidth) / 2,
+        y: cardY + 16,
         size: 13,
         font: bodyFont,
         color: rgb(0.35, 0.35, 0.35),
