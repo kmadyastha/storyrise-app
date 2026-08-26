@@ -3,10 +3,17 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import PaidBadge from "@/components/paywall/PaidBadge";
+import NarrationDrawer, { type NarrationDrawerPage } from "@/components/create/NarrationDrawer";
 import { exportOptions, bookSizes } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
 import { Download, Droplet, X, AlertCircle, Clock } from "lucide-react";
 import clsx from "clsx";
+
+interface ExportPanelPage {
+  id: string;
+  page_number: number;
+  audio_url: string | null;
+}
 
 interface Props {
   open: boolean;
@@ -14,6 +21,10 @@ interface Props {
   bookId: string;
   format: "classic" | "immersive";
   pageCount: number;
+  /** Needed to know whether narration is complete before a narrated-video
+   * or audiobook export — if it isn't, the narration drawer opens instead
+   * of just showing an error telling the user to go do it elsewhere. */
+  pages: ExportPanelPage[];
 }
 
 // Every export option now generates a real file — nothing left to gate as
@@ -29,20 +40,21 @@ const EXPORT_ROUTE: Record<string, string> = {
   video_silent: "video-silent",
 };
 
-export default function ExportPanel({ open, onClose, bookId, format, pageCount }: Props) {
+// These two need every page narrated before they can actually render.
+const NEEDS_NARRATION = new Set(["video_narrated", "audiobook"]);
+
+export default function ExportPanel({ open, onClose, bookId, format, pageCount, pages }: Props) {
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
   const [downloading, setDownloading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bookSizeId, setBookSizeId] = useState<string>(bookSizes.find((s) => "default" in s && s.default)?.id ?? bookSizes[0].id);
+  const [narrationDrawerFor, setNarrationDrawerFor] = useState<string | null>(null);
 
   const isLocked = (id: string) => isFree && !["pdf", "pptx"].includes(id);
   const belowMinPages = (opt: (typeof exportOptions)[number]) => "minPages" in opt && pageCount < (opt.minPages as number);
 
-  const handleExport = async (id: string) => {
-    if (isLocked(id)) return openUpgradeModal();
-    if (!LIVE_EXPORTS.has(id)) return; // shouldn't happen now, but keep the fallback
-
+  const runExport = async (id: string) => {
     setError(null);
     setDownloading(id);
     try {
@@ -77,6 +89,26 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount }
       setDownloading(null);
     }
   };
+
+  const handleExport = async (id: string) => {
+    if (isLocked(id)) return openUpgradeModal();
+    if (!LIVE_EXPORTS.has(id)) return; // shouldn't happen now, but keep the fallback
+
+    if (NEEDS_NARRATION.has(id) && pages.some((p) => !p.audio_url)) {
+      // Missing narration — open the drawer to generate it instead of
+      // just erroring and telling the user to go do it manually elsewhere.
+      setNarrationDrawerFor(id);
+      return;
+    }
+
+    await runExport(id);
+  };
+
+  const narrationPages: NarrationDrawerPage[] = pages.map((p) => ({
+    id: p.id,
+    pageNumber: p.page_number,
+    hasNarration: !!p.audio_url,
+  }));
 
   return (
     <AnimatePresence>
@@ -130,6 +162,7 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount }
                 const locked = isLocked(opt.id) && !disabledByFormat && !disabledByPages;
                 const live = LIVE_EXPORTS.has(opt.id);
                 const disabled = disabledByFormat || disabledByPages || (!live && !locked);
+                const needsNarration = NEEDS_NARRATION.has(opt.id) && pages.some((p) => !p.audio_url) && pages.length > 0;
                 return (
                   <button
                     key={opt.id}
@@ -149,6 +182,8 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount }
                         ? "Classic books export as PDF, PPTX, or KDP print files."
                         : disabledByPages
                         ? `Needs at least ${(opt as { minPages: number }).minPages} pages — this book has ${pageCount}.`
+                        : needsNarration
+                        ? "We'll help you generate narration first."
                         : opt.desc}
                     </p>
                     {isFree && (opt.id === "pdf" || opt.id === "pptx") && (
@@ -182,9 +217,21 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount }
             )}
 
             <p className="text-[11px] text-ink-soft mt-4">
-              Download or save your book — it will be automatically deleted 30 days from generation. No backups are kept.
+              This book is automatically deleted 30 days after it was created. No backups are kept.
             </p>
           </motion.div>
+
+          <NarrationDrawer
+            open={!!narrationDrawerFor}
+            onClose={() => setNarrationDrawerFor(null)}
+            pages={narrationPages}
+            exportKind={narrationDrawerFor === "audiobook" ? "audiobook" : "video"}
+            onAllNarrated={() => {
+              const id = narrationDrawerFor;
+              setNarrationDrawerFor(null);
+              if (id) runExport(id);
+            }}
+          />
         </motion.div>
       )}
     </AnimatePresence>

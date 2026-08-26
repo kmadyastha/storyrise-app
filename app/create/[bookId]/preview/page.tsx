@@ -198,7 +198,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
             {/* Text overlaid directly on the full image — a 75%-opaque dark
                 backing (25% see-through) keeps it legible against any
                 artwork without hiding the illustration itself. */}
-            <div className="absolute inset-x-4 top-4 bg-black/75 rounded-xl px-4 py-3">
+            <div className="absolute inset-x-4 top-4 bg-black/90 rounded-xl px-4 py-3">
               <p className="text-sm leading-relaxed text-white">{page.narration}</p>
             </div>
             {regenerating && (
@@ -358,11 +358,10 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
 
       {isFree && <p className="text-xs text-ink-soft mt-4">Per-slide regenerate and narration are paid features on the free trial.</p>}
 
-      <div className="flex items-start gap-3 bg-tangerine-tint border border-tangerine/20 rounded-2xl p-4 mt-6 max-w-xl">
-        <Clock size={16} className="text-tangerine-text shrink-0 mt-0.5" />
-        <p className="text-xs text-ink-soft">
-          Your book — and its cover, whether created today or a few days from now — is automatically deleted 30 days
-          after this book was generated. No backups are kept.
+      <div className="flex items-center gap-3 bg-tangerine-tint border border-tangerine/20 rounded-2xl p-4 mt-6">
+        <Clock size={16} className="text-tangerine-text shrink-0" />
+        <p className="text-xs text-ink-soft sm:whitespace-nowrap">
+          This book is automatically deleted 30 days after it was created. No backups are kept.
         </p>
       </div>
 
@@ -372,6 +371,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
         bookId={bookId}
         format={book?.format ?? "classic"}
         pageCount={book?.page_count ?? pages.length}
+        pages={pages.map((p) => ({ id: p.id, page_number: p.page_number, audio_url: p.audio_url }))}
       />
       <CoverDrawer
         open={coverOpen}

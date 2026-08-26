@@ -6,10 +6,12 @@ import PricingSection from "@/components/landing/PricingSection";
 import FAQSection from "@/components/landing/FAQSection";
 import CTASection from "@/components/landing/CTASection";
 import Footer from "@/components/landing/Footer";
+import DashboardRedirectGuard from "@/components/landing/DashboardRedirectGuard";
 
 export default function Home() {
   return (
     <main>
+      <DashboardRedirectGuard />
       <HeroSection />
       <FeaturesStrip />
       <HowItWorks />

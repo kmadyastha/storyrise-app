@@ -2,6 +2,7 @@ export interface RenderPage {
   pageNumber: number;
   imageUrl?: string | null;
   audioUrl?: string | null;
+  narration?: string | null;
 }
 
 export type RenderJobType = "video_narrated" | "video_silent" | "audiobook";

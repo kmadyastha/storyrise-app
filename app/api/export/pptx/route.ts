@@ -140,7 +140,7 @@ export async function POST(request: Request) {
       addImageCover(slide, imgData, 0, 0, W, H);
 
       const overlayH = 1.6;
-      slide.addShape("rect", { x: 0.3, y: 0.3, w: W - 0.6, h: overlayH, fill: { color: "000000", transparency: 25 } });
+      slide.addShape("rect", { x: 0.3, y: 0.3, w: W - 0.6, h: overlayH, fill: { color: "000000", transparency: 10 } });
       slide.addText(storyPage.narration, {
         x: 0.5,
         y: 0.3,

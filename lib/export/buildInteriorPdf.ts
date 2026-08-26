@@ -170,7 +170,7 @@ export async function buildInteriorPdf(opts: BuildInteriorPdfOptions): Promise<U
         width: overlayWidth,
         height: overlayHeight,
         color: rgb(0, 0, 0),
-        opacity: 0.75,
+        opacity: 0.9,
       });
       drawWrappedText(page, storyPage.narration, {
         x: overlayX + 12,

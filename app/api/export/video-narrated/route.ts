@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   const result = await renderViaWorker(
     bookId,
     "video_narrated",
-    pages.map((p) => ({ pageNumber: p.page_number, imageUrl: p.image_url, audioUrl: p.audio_url }))
+    pages.map((p) => ({ pageNumber: p.page_number, imageUrl: p.image_url, audioUrl: p.audio_url, narration: p.narration }))
   );
 
   if (!result.ok || !result.bytes) {
