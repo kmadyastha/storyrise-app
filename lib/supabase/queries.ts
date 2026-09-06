@@ -20,6 +20,19 @@ export interface Book {
   generated_at: string | null;
   created_at: string;
   updated_at: string;
+  // Picture (the original type) is the default — longform/educational
+  // fields below are null unless content_type says otherwise.
+  content_type: "picture" | "longform" | "educational";
+  // Long-Form Story Book fields
+  chapter_count: number | null;
+  illustration_density: "none" | "per_chapter" | "two_per_chapter" | "every_few_pages" | null;
+  total_illustrations: number | null;
+  story_type: string | null;
+  // Educational Book fields
+  subject: string | null;
+  concept_count: number | null;
+  explanation_style: "high_concept" | "eli5" | "for_dummies" | null;
+  grade_level: string | null;
 }
 
 export interface CreateBookInput {
@@ -33,6 +46,17 @@ export interface CreateBookInput {
   setting: string;
   rhymeMode: boolean;
   isFreeTrial: boolean;
+  contentType: "picture" | "longform" | "educational";
+  // Long-Form fields — undefined for picture/educational books
+  chapterCount?: number;
+  illustrationDensity?: "none" | "per_chapter" | "two_per_chapter" | "every_few_pages";
+  totalIllustrations?: number;
+  storyType?: string;
+  // Educational fields — undefined for picture/longform books
+  subject?: string;
+  conceptCount?: number;
+  explanationStyle?: "high_concept" | "eli5" | "for_dummies";
+  gradeLevel?: string;
 }
 
 export async function createBook(supabase: SupabaseClient, userId: string, input: CreateBookInput) {
@@ -51,6 +75,15 @@ export async function createBook(supabase: SupabaseClient, userId: string, input
       rhyme_mode: input.rhymeMode,
       is_free_trial: input.isFreeTrial,
       status: "draft",
+      content_type: input.contentType,
+      chapter_count: input.chapterCount ?? null,
+      illustration_density: input.illustrationDensity ?? null,
+      total_illustrations: input.totalIllustrations ?? null,
+      story_type: input.storyType ?? null,
+      subject: input.subject ?? null,
+      concept_count: input.conceptCount ?? null,
+      explanation_style: input.explanationStyle ?? null,
+      grade_level: input.gradeLevel ?? null,
     })
     .select()
     .single<Book>();
@@ -101,12 +134,17 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string) {
   return { data: books, error: null };
 }
 
+export interface QAPair {
+  question: string;
+  answer: string;
+}
+
 export interface StoryPage {
   id: string;
   book_id: string;
   page_number: number;
   narration: string;
-  image_description: string;
+  image_description: string | null;
   characters: string[];
   setting: string | null;
   multi_character: boolean;
@@ -114,6 +152,11 @@ export interface StoryPage {
   audio_url: string | null;
   created_at: string;
   updated_at: string;
+  // Long-Form: which chapter this page/section belongs to. Null for
+  // picture books (page_number alone is enough there).
+  chapter_number: number | null;
+  // Educational: only populated on the page(s) meant to carry Q&A content.
+  qa_pairs: QAPair[] | null;
 }
 
 export async function getStoryPages(supabase: SupabaseClient, bookId: string) {
@@ -158,10 +201,12 @@ export interface GenerateStoryResult {
   pages: {
     page: number;
     narration: string;
-    imageDescription: string;
+    imageDescription: string | null;
     characters: string[];
     setting: string;
     multiCharacter: boolean;
+    chapterNumber?: number;
+    qaPairs?: QAPair[];
   }[];
   characters: { name: string; type: "human" | "non_human"; description: string }[];
 }

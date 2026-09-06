@@ -116,6 +116,26 @@ export const artStyles = [
 
 export const settings = ["Village", "City", "Forest", "Space", "Underwater", "Fantasy kingdom"];
 
+// --- Long-Form Story Book ---
+export const storyTypes = ["Adventure", "Mystery", "Fantasy", "Friendship", "Moral tale", "Coming of age", "Survival", "Comedy"] as const;
+export const chapterCountOptions = [3, 5, 8, 12] as const;
+export const illustrationDensityOptions = [
+  { id: "none", label: "No images", desc: "Text only — fastest and cheapest." },
+  { id: "per_chapter", label: "1 image per chapter", desc: "One illustration opening each chapter." },
+  { id: "two_per_chapter", label: "2 images per chapter", desc: "A bit richer — two moments per chapter." },
+  { id: "every_few_pages", label: "1 every 4–5 pages", desc: "Illustrated at a steady pace through the book." },
+] as const;
+
+// --- Educational Book ---
+export const subjects = ["Science", "Social Studies", "Math", "Language & Reading", "History", "Geography", "Life Skills", "Art & Music"] as const;
+export const educationalTypes = ["Story-wrapped", "Direct concept explanation"] as const;
+export const explanationStyles = [
+  { id: "high_concept", label: "High concept", desc: "A confident, slightly advanced overview." },
+  { id: "eli5", label: "Explain like I'm 5", desc: "As simple and playful as it gets." },
+  { id: "for_dummies", label: "For dummies", desc: "Plain, step-by-step, no assumed knowledge." },
+] as const;
+export const gradeLevels = ["Grade 1–2", "Grade 3–4", "Grade 5–6", "Middle School", "High School"] as const;
+
 // Trim sizes offered at export time (PDF/PPTX now; KDP/Etsy reuse the same
 // list in Phase 4). Points are at 72pt/inch, used directly by pdf-lib.
 export const bookSizes = [

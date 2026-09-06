@@ -107,13 +107,13 @@ export default function HeroSection() {
       style={{ backgroundColor: bgColors[current.theme] }}
     >
       <div
-        className="bg-warm-white rounded-[32px] w-full max-w-[1360px] min-h-[720px] relative overflow-hidden shadow-[0_20px_80px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.04)] flex flex-col"
+        className="bg-warm-white rounded-[32px] w-full max-w-[1360px] min-h-[min(720px,88vh)] max-md:min-h-0 relative overflow-hidden shadow-[0_20px_80px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.04)] flex flex-col"
         onMouseEnter={stopCycle}
         onMouseLeave={startCycle}
       >
         <div className="flex flex-1 relative px-[60px] py-[50px] gap-[30px] items-center shrink-0 max-md:flex-col max-md:px-10 max-md:py-10 max-md:text-center">
           {/* Left Content — all 4 slides stacked, opacity-crossfaded in perfect sync with the image */}
-          <div className="flex-[0.9] z-[2] relative max-md:order-2 min-h-[280px]">
+          <div className="flex-[0.9] z-[2] relative max-md:order-2 min-h-[280px] max-md:w-full">
             {heroData.map((slide, i) => (
               <div
                 key={slide.theme}
@@ -166,7 +166,7 @@ export default function HeroSection() {
           </div>
 
           {/* Right Image */}
-          <div className="flex-[1.1] shrink-0 relative flex items-end justify-center min-h-[600px] max-md:order-1 max-md:min-h-[420px]">
+          <div className="flex-[1.1] shrink-0 relative flex items-end justify-center min-h-[600px] max-md:order-1 max-md:min-h-[420px] max-md:w-full">
             {/* bolder curvy gradient blob, ~half the card, colored per active theme */}
             <svg
               className="absolute pointer-events-none transition-opacity duration-500"

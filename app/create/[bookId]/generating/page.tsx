@@ -83,7 +83,12 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
 
         setPages(allPages);
 
-        const missingImages = allPages.filter((p) => !p.image_url);
+        // Pages with no image_description were never meant to have an
+        // illustration at all — Long-Form's sparser density leaves most
+        // pages text-only, and Educational's final Q&A page has none by
+        // design. Only pages that ARE supposed to have one but don't yet
+        // count as "missing".
+        const missingImages = allPages.filter((p) => !p.image_url && p.image_description);
         if (missingImages.length === 0) {
           setPhase("done");
           router.push(`/create/${bookId}/preview`);
@@ -242,10 +247,15 @@ export default function GeneratingStep({ params }: { params: Promise<{ bookId: s
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
             {pages.map((p) => {
               const failed = failedPages.some((f) => f.id === p.id);
+              const noImagePlanned = !p.image_description;
               return (
                 <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden border border-line bg-paper">
                   {p.image_url ? (
                     <img src={p.image_url} alt={`Page ${p.page_number}`} className="w-full h-full object-cover" />
+                  ) : noImagePlanned ? (
+                    <div className="w-full h-full grid place-items-center">
+                      <span className="text-[9px] text-ink-soft/60 font-medium uppercase tracking-wide">Text</span>
+                    </div>
                   ) : failed ? (
                     <div className="w-full h-full grid place-items-center bg-red-50">
                       <AlertCircle size={16} className="text-red-500" />

@@ -141,6 +141,8 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
           multi_character: p.multiCharacter,
           image_url: null,
           audio_url: null,
+          chapter_number: null,
+          qa_pairs: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }))
@@ -342,7 +344,7 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
                   }
                 />
                 <EditableField
-                  value={row.image_description}
+                  value={row.image_description ?? ""}
                   onSave={(v) => updateRow(row.id, "image_description", v)}
                   maxWords={IMAGE_DESC_MAX_WORDS}
                   label="Image description"

@@ -5,7 +5,20 @@ import { useRouter } from "next/navigation";
 import StepShell from "@/components/create/StepShell";
 import FilterPill from "@/components/create/FilterPill";
 import PaidBadge from "@/components/paywall/PaidBadge";
-import { storyStyles, ageGroups, artStyles, settings, mythologySubTypes } from "@/lib/dummy-data";
+import {
+  storyStyles,
+  ageGroups,
+  artStyles,
+  settings,
+  mythologySubTypes,
+  storyTypes,
+  chapterCountOptions,
+  illustrationDensityOptions,
+  subjects,
+  educationalTypes,
+  explanationStyles,
+  gradeLevels,
+} from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
 import { createBook } from "@/lib/supabase/queries";
@@ -22,6 +35,9 @@ import {
   MapPin,
   Landmark,
   Wand2,
+  BookOpen,
+  GraduationCap,
+  Image as ImageIcon,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -106,6 +122,7 @@ export default function CreateStep1() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   const [idea, setIdea] = useState("");
+  const [contentType, setContentType] = useState<"picture" | "longform" | "educational">("picture");
   const [style, setStyle] = useState<string>(storyStyles[0]);
   const [mythologySubType, setMythologySubType] = useState<string>(mythologySubTypes[0]);
   const [age, setAge] = useState<string>(ageGroups[1]);
@@ -118,6 +135,21 @@ export default function CreateStep1() {
   const [artStyle, setArtStyle] = useState(artStyles[0]);
   const [setting, setSetting] = useState(settings[0]);
   const [rhyme, setRhyme] = useState(false);
+
+  // Long-Form Story Book fields
+  const [chapterCount, setChapterCount] = useState<number>(chapterCountOptions[1]);
+  const [longformPages, setLongformPages] = useState(60);
+  const [storyType, setStoryType] = useState<string>(storyTypes[0]);
+  const [illustrationDensity, setIllustrationDensity] = useState<(typeof illustrationDensityOptions)[number]["id"]>("per_chapter");
+  const [totalIllustrations, setTotalIllustrations] = useState<number>(chapterCountOptions[1]);
+
+  // Educational Book fields
+  const [subject, setSubject] = useState<string>(subjects[0]);
+  const [educationalType, setEducationalType] = useState<string>(educationalTypes[0]);
+  const [explanationStyle, setExplanationStyle] = useState<(typeof explanationStyles)[number]["id"]>("eli5");
+  const [gradeLevel, setGradeLevel] = useState<string>(gradeLevels[0]);
+  const [conceptCount, setConceptCount] = useState<number>(1);
+  const [educationalPages, setEducationalPages] = useState(16);
 
   const pageLabel = pagePresets.find((p) => p.count === pageCount)?.count ?? pageCount;
   const isMythology = style === "Mythology";
@@ -136,6 +168,13 @@ export default function CreateStep1() {
       setCreateError("Still loading your account — please try again in a moment.");
       return;
     }
+    // Long-Form and Educational are browsable on the free trial (per
+    // explicit product decision) but can't actually be generated on it —
+    // only Picture Story Book has a free-trial generation path at all.
+    if (contentType !== "picture" && isFree) {
+      openUpgradeModal();
+      return;
+    }
 
     setCreating(true);
     setCreateError(null);
@@ -148,15 +187,29 @@ export default function CreateStep1() {
     const supabase = createClient();
     const { data: book, error } = await createBook(supabase, user.id, {
       idea: idea.trim(),
-      style: finalStyle,
+      style: contentType === "picture" ? finalStyle : style,
       ageGroup: age,
-      pageCount,
+      pageCount: contentType === "longform" ? longformPages : contentType === "educational" ? educationalPages : pageCount,
       format,
       layout,
       artStyle,
       setting,
       rhymeMode: rhyme,
       isFreeTrial: isFree,
+      contentType,
+      ...(contentType === "longform" && {
+        chapterCount,
+        illustrationDensity,
+        totalIllustrations,
+        storyType,
+      }),
+      ...(contentType === "educational" && {
+        subject,
+        conceptCount,
+        explanationStyle,
+        gradeLevel,
+        storyType: educationalType, // reuses the same column — "story-wrapped" vs "direct concept" is educational's version of "story type"
+      }),
     });
 
     setCreating(false);
@@ -174,27 +227,72 @@ export default function CreateStep1() {
     setPageCount((c) => Math.min(50, Math.max(25, c + dir)));
   };
 
+  const headerCopy: Record<typeof contentType, { eyebrow: string; headline: string }> = {
+    picture: { eyebrow: "A picture-book press, powered by AI", headline: "Turn an Idea into a Story Book" },
+    longform: { eyebrow: "Full chapter books, powered by AI", headline: "Turn an Idea into a Chapter Book" },
+    educational: { eyebrow: "Concepts, explained beautifully", headline: "Turn a Concept into a Learning Book" },
+  };
+
   return (
     <StepShell activeKey="create" title="" hideFooter wide>
       <div className="max-w-3xl mx-auto text-center mb-8">
         <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-teal-text mb-3">
-          <Sparkles size={14} /> A picture-book press, powered by AI
+          <Sparkles size={14} /> {headerCopy[contentType].eyebrow}
         </span>
-        <h1 className="font-display text-3xl sm:text-4xl font-semibold text-ink">
-          Turn an Idea into a Story Book
-        </h1>
+        <h1 className="font-display text-3xl sm:text-4xl font-semibold text-ink">{headerCopy[contentType].headline}</h1>
       </div>
 
       <div className="max-w-3xl mx-auto">
+        <div className="flex justify-center mb-5">
+          <div className="inline-flex items-center gap-1 bg-paper rounded-full p-1 border border-line">
+            <button
+              onClick={() => setContentType("picture")}
+              className={clsx(
+                "inline-flex items-center gap-1.5 text-sm font-medium rounded-full px-4 py-2 transition-colors",
+                contentType === "picture" ? "bg-teal text-white" : "text-ink-soft hover:text-ink"
+              )}
+            >
+              <ImageIcon size={14} /> Picture Story Book
+            </button>
+            <button
+              onClick={() => setContentType("longform")}
+              className={clsx(
+                "relative inline-flex items-center gap-1.5 text-sm font-medium rounded-full px-4 py-2 transition-colors",
+                contentType === "longform" ? "bg-teal text-white" : "text-ink-soft hover:text-ink"
+              )}
+            >
+              <BookOpen size={14} /> Long-Form Story Book
+              {isFree && contentType !== "longform" && <PaidBadge inline />}
+            </button>
+            <button
+              onClick={() => setContentType("educational")}
+              className={clsx(
+                "relative inline-flex items-center gap-1.5 text-sm font-medium rounded-full px-4 py-2 transition-colors",
+                contentType === "educational" ? "bg-teal text-white" : "text-ink-soft hover:text-ink"
+              )}
+            >
+              <GraduationCap size={14} /> Educational
+              {isFree && contentType !== "educational" && <PaidBadge inline />}
+            </button>
+          </div>
+        </div>
+
         <div className="bg-white rounded-[28px] border border-line shadow-[0_20px_50px_rgba(0,0,0,0.06)] p-5 sm:p-6">
           <textarea
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
             rows={3}
-            placeholder="One sentence is enough — or paste a story you already wrote…"
+            placeholder={
+              contentType === "picture"
+                ? "One sentence is enough — or paste a story you already wrote…"
+                : contentType === "longform"
+                ? "Describe the story — a premise, a world, a character's journey…"
+                : "What should this book teach? e.g. \"How photosynthesis works\" or \"The water cycle\""
+            }
             className="w-full resize-none border-none outline-none text-base sm:text-lg placeholder:text-ink-soft/70"
           />
 
+          {contentType === "picture" && (
           <div className="flex flex-wrap items-center gap-2.5 mt-4 pt-4 border-t border-line">
             <FilterPill label="Ages" value={age}>
               {(close) => (
@@ -368,9 +466,250 @@ export default function CreateStep1() {
               )}
             </FilterPill>
           </div>
+          )}
+
+          {contentType === "longform" && (
+          <div className="flex flex-wrap items-center gap-2.5 mt-4 pt-4 border-t border-line">
+            <FilterPill label="Ages" value={age}>
+              {(close) => (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {ageGroups.map((a) => (
+                    <OptionButton key={a} active={age === a} onClick={() => { setAge(a); close(); }}>
+                      {a}
+                    </OptionButton>
+                  ))}
+                </div>
+              )}
+            </FilterPill>
+
+            <span className="text-line hidden sm:inline">|</span>
+
+            <FilterPill label="Story type" value={storyType} panelClassName="w-80">
+              {(close) => (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {storyTypes.map((s) => (
+                    <OptionButton key={s} active={storyType === s} onClick={() => { setStoryType(s); close(); }} className="text-left">
+                      {s}
+                    </OptionButton>
+                  ))}
+                </div>
+              )}
+            </FilterPill>
+
+            <span className="text-line hidden sm:inline">|</span>
+
+            <FilterPill label="Chapters" value={String(chapterCount)} panelClassName="w-64" align="right">
+              {(close) => (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {chapterCountOptions.map((c) => (
+                    <OptionButton key={c} active={chapterCount === c} onClick={() => { setChapterCount(c); close(); }}>
+                      {c}
+                    </OptionButton>
+                  ))}
+                </div>
+              )}
+            </FilterPill>
+
+            <span className="text-line hidden sm:inline">|</span>
+
+            <FilterPill label="Pages" value={String(longformPages)} panelClassName="w-72" align="right">
+              {() => (
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => setLongformPages((p) => Math.max(20, p - 10))}
+                    className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="flex-1 text-center text-sm font-semibold">{longformPages}</span>
+                  <button
+                    onClick={() => setLongformPages((p) => Math.min(300, p + 10))}
+                    className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              )}
+            </FilterPill>
+
+            <span className="text-line hidden sm:inline">|</span>
+
+            <FilterPill
+              label="Illustrations"
+              value={illustrationDensityOptions.find((o) => o.id === illustrationDensity)?.label ?? ""}
+              panelClassName="w-96"
+              align="right"
+            >
+              {() => (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {illustrationDensityOptions.map((o) => (
+                      <button
+                        key={o.id}
+                        onClick={() => {
+                          setIllustrationDensity(o.id);
+                          // Suggest a sensible starting total based on the
+                          // chosen density — the user can still override it
+                          // with the stepper below.
+                          if (o.id === "none") setTotalIllustrations(0);
+                          else if (o.id === "per_chapter") setTotalIllustrations(chapterCount);
+                          else if (o.id === "two_per_chapter") setTotalIllustrations(chapterCount * 2);
+                          else setTotalIllustrations(Math.max(1, Math.round(longformPages / 4.5)));
+                        }}
+                        className={clsx(
+                          "text-left rounded-lg px-3 py-2 border transition-colors",
+                          illustrationDensity === o.id ? "bg-teal text-white border-teal" : "bg-white border-line hover:border-teal hover:bg-teal-tint/40"
+                        )}
+                      >
+                        <span className="font-medium block text-sm">{o.label}</span>
+                        <span className={clsx("text-xs", illustrationDensity === o.id ? "text-white/80" : "text-ink-soft")}>{o.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {illustrationDensity !== "none" && (
+                    <div className="pt-2 border-t border-line">
+                      <p className="text-[11px] font-medium text-ink-soft mb-1.5">Total illustrations (adjustable)</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => setTotalIllustrations((t) => Math.max(1, t - 1))}
+                          className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span className="flex-1 text-center text-sm font-semibold">{totalIllustrations}</span>
+                        <button
+                          onClick={() => setTotalIllustrations((t) => t + 1)}
+                          className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </FilterPill>
+          </div>
+          )}
+
+          {contentType === "educational" && (
+          <div className="flex flex-wrap items-center gap-2.5 mt-4 pt-4 border-t border-line">
+            <FilterPill label="Subject" value={subject} panelClassName="w-80">
+              {(close) => (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {subjects.map((s) => (
+                    <OptionButton key={s} active={subject === s} onClick={() => { setSubject(s); close(); }} className="text-left">
+                      {s}
+                    </OptionButton>
+                  ))}
+                </div>
+              )}
+            </FilterPill>
+
+            <span className="text-line hidden sm:inline">|</span>
+
+            <FilterPill label="Type" value={educationalType} panelClassName="w-72">
+              {(close) => (
+                <div className="grid grid-cols-1 gap-1.5">
+                  {educationalTypes.map((t) => (
+                    <OptionButton key={t} active={educationalType === t} onClick={() => { setEducationalType(t); close(); }} className="text-left">
+                      {t}
+                    </OptionButton>
+                  ))}
+                </div>
+              )}
+            </FilterPill>
+
+            <span className="text-line hidden sm:inline">|</span>
+
+            <FilterPill
+              label="Style"
+              value={explanationStyles.find((s) => s.id === explanationStyle)?.label ?? ""}
+              panelClassName="w-80"
+            >
+              {(close) => (
+                <div className="grid grid-cols-1 gap-1.5">
+                  {explanationStyles.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => { setExplanationStyle(s.id); close(); }}
+                      className={clsx(
+                        "text-left rounded-lg px-3 py-2 border transition-colors",
+                        explanationStyle === s.id ? "bg-teal text-white border-teal" : "bg-white border-line hover:border-teal hover:bg-teal-tint/40"
+                      )}
+                    >
+                      <span className="font-medium block text-sm">{s.label}</span>
+                      <span className={clsx("text-xs", explanationStyle === s.id ? "text-white/80" : "text-ink-soft")}>{s.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </FilterPill>
+
+            <span className="text-line hidden sm:inline">|</span>
+
+            <FilterPill label="Grade" value={gradeLevel} panelClassName="w-64" align="right">
+              {(close) => (
+                <div className="grid grid-cols-1 gap-1.5">
+                  {gradeLevels.map((g) => (
+                    <OptionButton key={g} active={gradeLevel === g} onClick={() => { setGradeLevel(g); close(); }} className="text-left">
+                      {g}
+                    </OptionButton>
+                  ))}
+                </div>
+              )}
+            </FilterPill>
+
+            <span className="text-line hidden sm:inline">|</span>
+
+            <FilterPill label="Concepts" value={String(conceptCount)} panelClassName="w-56" align="right">
+              {() => (
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => setConceptCount((c) => Math.max(1, c - 1))}
+                    className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="flex-1 text-center text-sm font-semibold">{conceptCount}</span>
+                  <button
+                    onClick={() => setConceptCount((c) => Math.min(10, c + 1))}
+                    className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              )}
+            </FilterPill>
+
+            <span className="text-line hidden sm:inline">|</span>
+
+            <FilterPill label="Pages" value={String(educationalPages)} panelClassName="w-72" align="right">
+              {() => (
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => setEducationalPages((p) => Math.max(8, p - 4))}
+                    className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="flex-1 text-center text-sm font-semibold">{educationalPages}</span>
+                  <button
+                    onClick={() => setEducationalPages((p) => Math.min(80, p + 4))}
+                    className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              )}
+            </FilterPill>
+          </div>
+          )}
 
           {/* Advanced options (left) + CTA (right) — always on their own row, CTA always flush right */}
           <div className="flex items-center justify-between gap-3 mt-3">
+            {contentType === "picture" ? (
             <FilterPill label="" value="Advanced options" icon={<SlidersHorizontal size={14} className="text-ink-soft" />} panelClassName="w-96">
               {() => (
                 <div className="space-y-2 text-left">
@@ -420,14 +759,22 @@ export default function CreateStep1() {
                 </div>
               )}
             </FilterPill>
+            ) : <span />}
 
             <button
               onClick={handleCreate}
               disabled={!idea.trim() || creating}
-              className="inline-flex items-center gap-2 bg-teal text-white rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-text transition-colors shrink-0"
+              className="relative inline-flex items-center gap-2 bg-teal text-white rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-text transition-colors shrink-0"
             >
-              {creating ? "Creating…" : "Create My Story Book"}
+              {creating
+                ? "Creating…"
+                : contentType === "picture"
+                ? "Create My Story Book"
+                : contentType === "longform"
+                ? "Create My Chapter Book"
+                : "Create My Learning Book"}
               {!creating && <ArrowRight size={16} />}
+              {isFree && contentType !== "picture" && <PaidBadge />}
             </button>
           </div>
 
