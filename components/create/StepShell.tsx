@@ -6,14 +6,32 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import { ChevronLeft } from "lucide-react";
 
-const STEPS = [
-  { key: "create", label: "Idea" },
-  { key: "story", label: "Story" },
-  { key: "characters", label: "Characters" },
-  { key: "quote", label: "Quote" },
-  { key: "generating", label: "Generate" },
-  { key: "preview", label: "Preview" },
-];
+const STEPS_BY_TYPE = {
+  picture: [
+    { key: "create", label: "Idea" },
+    { key: "story", label: "Story" },
+    { key: "characters", label: "Characters" },
+    { key: "quote", label: "Quote" },
+    { key: "generating", label: "Generate" },
+    { key: "preview", label: "Preview" },
+  ],
+  longform: [
+    { key: "create", label: "Idea" },
+    { key: "story", label: "Story" },
+    { key: "characters", label: "Characters" },
+    { key: "quote", label: "Quote" },
+    { key: "generating", label: "Generate" },
+    { key: "preview", label: "Preview" },
+  ],
+  educational: [
+    { key: "create", label: "Idea" },
+    { key: "story", label: "Content" },
+    { key: "characters", label: "Review" },
+    { key: "quote", label: "Quote" },
+    { key: "generating", label: "Generate" },
+    { key: "preview", label: "Preview" },
+  ],
+};
 
 // "create" (step 1) has no bookId yet — it's a different route shape
 // (/create, not /create/[bookId]/...) that always starts a BRAND NEW book.
@@ -43,6 +61,10 @@ interface Props {
    * non-interactive, since jumping into a step with no data yet would show
    * a broken/empty page rather than actually skip you ahead. */
   bookId?: string;
+  /** Selects the right step labels for the book being created — Educational
+   * books don't have a "Story" or "Characters" step in the narrative sense,
+   * so those labels change to "Content"/"Review". Defaults to "picture". */
+  contentType?: "picture" | "longform" | "educational";
 }
 
 export default function StepShell({
@@ -57,8 +79,10 @@ export default function StepShell({
   hideFooter,
   wide,
   bookId,
+  contentType = "picture",
 }: Props) {
   const router = useRouter();
+  const STEPS = STEPS_BY_TYPE[contentType];
   const activeIndex = STEPS.findIndex((s) => s.key === activeKey);
 
   return (

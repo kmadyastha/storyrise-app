@@ -9,8 +9,8 @@ const faqs = [
     a: "Every generation — a story page, a character reference, a cover, an export — costs credits. Your plan grants a set number each month; unused credits on Growth tier roll over up to 50%.",
   },
   {
-    q: "What's the difference between Classic and Immersive?",
-    a: "Classic shows one full illustration per page with the story text as a caption underneath — a traditional picture-book look. Immersive keeps the illustration full-bleed too, with the narration overlaid directly on the art in a translucent text box, and is the only format that supports video export.",
+    q: "What's the difference between the two text positions?",
+    a: "Text at the bottom shows one full illustration per page with the story as a caption underneath — a traditional picture-book look. Text overlaid keeps the illustration full-bleed too, with the narration placed directly on the art in a translucent text box, and is the only option that supports video export.",
   },
   {
     q: "Can I really publish to Amazon KDP?",

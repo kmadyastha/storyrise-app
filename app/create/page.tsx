@@ -41,11 +41,25 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 
-const quickStarts = [
+const pictureQuickStarts = [
   { label: "Bedtime adventure", idea: "A gentle bedtime adventure where my child drifts off into a dream about a floating island of clouds." },
   { label: "First day of school", idea: "My child's nervous, exciting first day at a new school, and the friend they make by lunchtime." },
   { label: "Family memory", idea: "Our family's weekend camping trip, turned into an adventure where the campfire tells stories back." },
   { label: "Surprise me", idea: "A curious kid discovers a hidden door in their backyard that leads somewhere nobody in the family has ever been." },
+];
+
+const longformQuickStarts = [
+  { label: "Fantasy quest", idea: "A young apprentice must retrieve a stolen artifact before it falls into the wrong hands, journeying through three very different kingdoms." },
+  { label: "Mystery", idea: "Strange things keep happening at the old lighthouse, and the new kid in town is determined to find out why." },
+  { label: "Survival story", idea: "Two siblings get separated from their family during a storm and have to find their way back using nothing but their wits." },
+  { label: "Surprise me", idea: "A shy kid discovers they can talk to animals, right as the town's oldest tree goes missing." },
+];
+
+const educationalQuickStarts = [
+  { label: "The water cycle", idea: "How the water cycle works — evaporation, condensation, and precipitation." },
+  { label: "How volcanoes form", idea: "What causes volcanoes to form and why they erupt." },
+  { label: "The human heart", idea: "How the human heart pumps blood around the body." },
+  { label: "Fractions", idea: "What fractions are and how to compare and add simple ones." },
 ];
 
 const pagePresets = [
@@ -428,14 +442,14 @@ export default function CreateStep1() {
 
             <span className="text-line hidden sm:inline">|</span>
 
-            <FilterPill label="Format" value={format === "classic" ? "Classic" : "Immersive"} panelClassName="w-80" align="right">
+            <FilterPill label="Text position" value={format === "classic" ? "At the bottom" : "Overlaid on image"} panelClassName="w-80" align="right">
               {() => (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-1.5">
                     <OptionButton active={format === "classic"} onClick={() => setFormat("classic")} className="text-left !py-2.5">
-                      <span className="font-medium block">Classic</span>
+                      <span className="font-medium block">Text at the bottom</span>
                       <span className={clsx("text-xs", format === "classic" ? "text-white/80" : "text-ink-soft")}>
-                        One image per page
+                        Full image, caption underneath
                       </span>
                     </OptionButton>
 
@@ -451,9 +465,9 @@ export default function CreateStep1() {
                           : "bg-white border-line hover:border-teal hover:bg-teal-tint/40"
                       )}
                     >
-                      <span className="font-medium block">Immersive</span>
+                      <span className="font-medium block">Text overlaid</span>
                       <span className={clsx("text-xs", format === "immersive" ? "text-white/80" : "text-ink-soft")}>
-                        Image + text
+                        Full image, text on top
                       </span>
                       {isFree && <PaidBadge />}
                     </button>
@@ -789,7 +803,7 @@ export default function CreateStep1() {
         <div className="mt-8 text-center">
           <p className="text-base text-ink font-medium mb-3">Not sure what to write? Try one:</p>
           <div className="flex flex-nowrap items-center justify-center gap-3 overflow-x-auto thin-scroll pb-1">
-            {quickStarts.map((q) => (
+            {(contentType === "picture" ? pictureQuickStarts : contentType === "longform" ? longformQuickStarts : educationalQuickStarts).map((q) => (
               <button
                 key={q.label}
                 onClick={() => setIdea(q.idea)}

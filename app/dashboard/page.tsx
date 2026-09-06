@@ -228,7 +228,7 @@ export default function DashboardPage() {
                 <div className="p-4">
                   <h3 className="font-display font-semibold mb-1 leading-snug">{b.title || "Untitled story"}</h3>
                   <p className="text-xs text-ink-soft">
-                    {b.age_group} · {b.style} · {b.page_count}pg · {b.format === "immersive" ? "Immersive" : "Classic"}
+                    {b.age_group} · {b.style} · {b.page_count}pg · {b.format === "immersive" ? "Text overlaid" : "Text at bottom"}
                   </p>
                   <div className="flex items-center justify-between mt-3">
                     <span className="text-[11px] text-ink-soft">{formatRelativeDate(b.updated_at)}</span>

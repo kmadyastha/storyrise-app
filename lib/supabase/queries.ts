@@ -60,10 +60,13 @@ export interface CreateBookInput {
 }
 
 export async function createBook(supabase: SupabaseClient, userId: string, input: CreateBookInput) {
+  const placeholderTitle =
+    input.contentType === "educational" ? "Untitled Learning Book" : input.contentType === "longform" ? "Untitled Chapter Book" : "Untitled Story";
   return supabase
     .from("books")
     .insert({
       user_id: userId,
+      title: placeholderTitle,
       idea: input.idea,
       style: input.style,
       age_group: input.ageGroup,

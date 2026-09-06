@@ -247,9 +247,13 @@ export async function POST(request: Request) {
     // image descriptions + characters genuinely needs more room, and running
     // out mid-generation produces truncated, invalid JSON. Scales with page
     // count, capped at a safe ceiling for this model. Longform pages carry
-    // meaningfully more prose per page than picture-book pages, so it gets
-    // a bigger per-page allowance.
-    const perPageTokens = book.content_type === "longform" ? 220 : 130;
+    // meaningfully more prose per page than picture-book pages, and
+    // Educational pages carry dense factual explanation PLUS a full 4-pair
+    // Q&A block on the final page — both need real headroom, not the
+    // picture-book default, which is what was actually causing Educational
+    // generation to come back truncated (invalid JSON → the 502 seen in
+    // testing), not any content-safety or prompt-quality issue.
+    const perPageTokens = book.content_type === "longform" ? 220 : book.content_type === "educational" ? 260 : 130;
     const maxTokens = Math.min(8000, 1500 + book.page_count * perPageTokens);
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",

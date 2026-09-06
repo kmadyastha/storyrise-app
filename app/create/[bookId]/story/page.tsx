@@ -235,7 +235,7 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
 
   if (notFound) {
     return (
-      <StepShell activeKey="story" title="Story not found" onBack="/create" hideFooter bookId={bookId}>
+      <StepShell activeKey="story" title="Story not found" onBack="/create" hideFooter bookId={bookId} contentType={book?.content_type}>
         <Card className="text-sm text-ink-soft">
           We couldn&rsquo;t find that book — it may have been deleted, or the link is out of date.
         </Card>
@@ -243,20 +243,48 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
     );
   }
 
+  const loadingTitle = book?.content_type === "educational" ? "Putting your content together…" : "Writing your story…";
+  const loadingMessages =
+    book?.content_type === "educational"
+      ? [
+          "Reading your topic…",
+          "Structuring the explanation…",
+          "Writing each page…",
+          "Building the review questions…",
+          "This can take up to a minute or two for longer books…",
+          "Almost there — polishing it up…",
+        ]
+      : book?.content_type === "longform"
+      ? [
+          "Reading your idea…",
+          "Dreaming up characters…",
+          "Outlining the chapters…",
+          "Writing each chapter…",
+          "This can take up to a minute or two for longer books…",
+          "Almost there — polishing the story…",
+        ]
+      : [
+          "Reading your idea…",
+          "Dreaming up characters…",
+          "Sketching out the plot…",
+          "Writing each page…",
+          "This can take up to a minute or two for longer books…",
+          "Almost there — polishing the story…",
+        ];
+
   if (loading || generating) {
     return (
-      <StepShell activeKey="story" title={generating ? "Writing your story…" : "Loading…"} onBack="/create" hideFooter wide bookId={bookId}>
+      <StepShell
+        activeKey="story"
+        title={generating ? loadingTitle : "Loading…"}
+        onBack="/create"
+        hideFooter
+        wide
+        bookId={bookId}
+        contentType={book?.content_type}
+      >
         {generating ? (
-          <GenerationLoader
-            messages={[
-              "Reading your idea…",
-              "Dreaming up characters…",
-              "Sketching out the plot…",
-              "Writing each page…",
-              "This can take up to a minute or two for longer books…",
-              "Almost there — polishing the story…",
-            ]}
-          />
+          <GenerationLoader messages={loadingMessages} />
         ) : (
           <div className="flex items-center gap-3 text-ink-soft text-sm">
             <Sparkles size={16} className="animate-pulse text-teal-text" />
@@ -270,12 +298,17 @@ export default function StoryStep({ params }: { params: Promise<{ bookId: string
   return (
     <StepShell
       activeKey="story"
-      title={book?.title ?? "Your story"}
-      subtitle="Review the story below. Each page shows the narration and what the illustration will depict — edit either, or regenerate the whole thing."
+      title={book?.title ?? (book?.content_type === "educational" ? "Your learning book" : "Your story")}
+      subtitle={
+        book?.content_type === "educational"
+          ? "Review the content below. Each page shows the explanation and what the illustration will depict — edit either, or regenerate the whole thing."
+          : "Review the story below. Each page shows the narration and what the illustration will depict — edit either, or regenerate the whole thing."
+      }
       onBack="/create"
       onNext={() => router.push(`/create/${bookId}/characters`)}
       wide
       bookId={bookId}
+      contentType={book?.content_type}
     >
       {error && (
         <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
