@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import PaidBadge from "@/components/paywall/PaidBadge";
 import NarrationDrawer, { type NarrationDrawerPage } from "@/components/create/NarrationDrawer";
 import { exportOptions, bookSizes } from "@/lib/dummy-data";
+import { computeVideoCreditCost, AUDIOBOOK_EXPORT_COST } from "@/lib/credits";
 import { useApp } from "@/lib/app-context";
-import { Download, Droplet, X, AlertCircle, Clock } from "lucide-react";
+import { Download, Droplet, X, AlertCircle, Clock, RefreshCw } from "lucide-react";
 import clsx from "clsx";
+
+const SLOW_EXPORTS = new Set(["video_narrated", "video_silent", "audiobook"]);
 
 interface ExportPanelPage {
   id: string;
@@ -53,6 +56,16 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!downloading) {
+      queueMicrotask(() => setElapsedSeconds(0));
+      return;
+    }
+    const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [downloading]);
   const [error, setError] = useState<string | null>(null);
   const [bookSizeId, setBookSizeId] = useState<string>(bookSizes.find((s) => "default" in s && s.default)?.id ?? bookSizes[0].id);
   const [narrationDrawerFor, setNarrationDrawerFor] = useState<string | null>(null);
@@ -197,6 +210,16 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
                         <Droplet size={10} /> Watermarked
                       </span>
                     )}
+                    {!isFree && !needsNarration && !disabled && (opt.id === "video_narrated" || opt.id === "video_silent") && (
+                      <span className="inline-block text-[11px] text-teal-text bg-teal-tint rounded-full px-2 py-0.5 mb-2">
+                        {computeVideoCreditCost(pageCount)} credits
+                      </span>
+                    )}
+                    {!isFree && !needsNarration && !disabled && opt.id === "audiobook" && (
+                      <span className="inline-block text-[11px] text-teal-text bg-teal-tint rounded-full px-2 py-0.5 mb-2">
+                        {AUDIOBOOK_EXPORT_COST} credits
+                      </span>
+                    )}
                     {disabledByPages ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
                         <AlertCircle size={13} /> Needs more pages
@@ -205,9 +228,16 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
                         <Clock size={13} /> Coming soon
                       </span>
+                    ) : downloading === opt.id ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-text">
+                        <RefreshCw size={13} className="animate-spin" />
+                        {SLOW_EXPORTS.has(opt.id)
+                          ? `Rendering… ${elapsedSeconds}s${elapsedSeconds > 20 ? " (this can take a couple of minutes)" : ""}`
+                          : "Preparing…"}
+                      </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-text">
-                        <Download size={13} /> {downloading === opt.id ? "Preparing…" : "Export"}
+                        <Download size={13} /> Export
                       </span>
                     )}
                   </button>

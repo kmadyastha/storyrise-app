@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { fetchExportData, sanitizeFilename } from "@/lib/export/exportData";
 import { renderViaWorker } from "@/lib/videoWorker";
+import { precheckCredits, chargeCredits } from "@/lib/credits";
 
 export const maxDuration = 290;
 
@@ -51,6 +52,11 @@ export async function POST(request: Request) {
     );
   }
 
+  const precheck = await precheckCredits(user.id, "audiobook_export", book.is_free_trial);
+  if (!precheck.allowed) {
+    return NextResponse.json({ error: precheck.reason }, { status: 402 });
+  }
+
   const result = await renderViaWorker(
     bookId,
     "audiobook",
@@ -60,6 +66,8 @@ export async function POST(request: Request) {
   if (!result.ok || !result.bytes) {
     return NextResponse.json({ error: result.error || "Audiobook rendering failed" }, { status: 502 });
   }
+
+  await chargeCredits(user.id, bookId, "audiobook_export", book.is_free_trial);
 
   const filename = `${sanitizeFilename(book.title)}-audiobook.mp3`;
 

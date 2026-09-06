@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { fetchExportData, sanitizeFilename } from "@/lib/export/exportData";
 import { renderViaWorker } from "@/lib/videoWorker";
+import { precheckCredits, chargeCredits, computeVideoCreditCost } from "@/lib/credits";
 
 export const maxDuration = 290;
 
@@ -42,15 +43,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Video export isn't available on the free trial — upgrade to unlock it." }, { status: 403 });
   }
 
+  const cost = computeVideoCreditCost(pages.length);
+  const precheck = await precheckCredits(user.id, "video", book.is_free_trial, cost);
+  if (!precheck.allowed) {
+    return NextResponse.json({ error: precheck.reason }, { status: 402 });
+  }
+
   const result = await renderViaWorker(
     bookId,
     "video_silent",
-    pages.map((p) => ({ pageNumber: p.page_number, imageUrl: p.image_url }))
+    pages.map((p) => ({ pageNumber: p.page_number, imageUrl: p.image_url, narration: p.narration }))
   );
 
   if (!result.ok || !result.bytes) {
     return NextResponse.json({ error: result.error || "Video rendering failed" }, { status: 502 });
   }
+
+  await chargeCredits(user.id, bookId, "video", book.is_free_trial, cost);
 
   const filename = `${sanitizeFilename(book.title)}-silent.mp4`;
 

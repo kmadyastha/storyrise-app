@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { fetchExportData, sanitizeFilename } from "@/lib/export/exportData";
 import { renderViaWorker } from "@/lib/videoWorker";
+import { precheckCredits, chargeCredits, computeVideoCreditCost } from "@/lib/credits";
 
 // Cold-starting the Fly.io machine plus real multi-page video encoding can
 // genuinely take a couple of minutes — this needs real headroom, matched to
@@ -58,6 +59,12 @@ export async function POST(request: Request) {
     );
   }
 
+  const cost = computeVideoCreditCost(pages.length);
+  const precheck = await precheckCredits(user.id, "video", book.is_free_trial, cost);
+  if (!precheck.allowed) {
+    return NextResponse.json({ error: precheck.reason }, { status: 402 });
+  }
+
   const result = await renderViaWorker(
     bookId,
     "video_narrated",
@@ -67,6 +74,8 @@ export async function POST(request: Request) {
   if (!result.ok || !result.bytes) {
     return NextResponse.json({ error: result.error || "Video rendering failed" }, { status: 502 });
   }
+
+  await chargeCredits(user.id, bookId, "video", book.is_free_trial, cost);
 
   const filename = `${sanitizeFilename(book.title)}-narrated.mp4`;
 
