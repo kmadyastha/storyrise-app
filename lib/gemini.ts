@@ -32,7 +32,8 @@ interface ReferenceImage {
  */
 export async function generateImage(
   prompt: string,
-  references: ReferenceImage[] = []
+  references: ReferenceImage[] = [],
+  aspectRatio?: string
 ): Promise<{ bytes: Buffer; mimeType: string }> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not set on the server");
@@ -50,6 +51,11 @@ export async function generateImage(
     response = await ai.models.generateContent({
       model: IMAGE_MODEL,
       contents,
+      // Requests the right proportions for the book's actual trim size so
+      // exported pages don't come out cropped/padded oddly. Google has
+      // documented cases of this being ignored in some scenarios — this is
+      // the correct, best-effort request, not a guaranteed outcome.
+      ...(aspectRatio ? { config: { imageConfig: { aspectRatio } } } : {}),
     });
   } catch (err) {
     if (isRateLimitError(err)) {

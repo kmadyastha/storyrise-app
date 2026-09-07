@@ -145,6 +145,30 @@ export const bookSizes = [
   { id: "8.5x11", label: "8.5\" × 11\" — Portrait, large print", widthIn: 8.5, heightIn: 11 },
 ] as const;
 
+// Gemini's imageConfig.aspectRatio only accepts these exact values — every
+// book trim size maps to whichever one is closest, so illustrations are
+// generated at roughly the right proportions for that trim instead of
+// always defaulting to square and getting cropped/padded oddly at export.
+// Worth knowing: Gemini has documented cases of not always honoring this
+// parameter — it's the correct, best-effort request, not a hard guarantee.
+const GEMINI_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"] as const;
+
+export function bookSizeToAspectRatio(bookSizeId: string): (typeof GEMINI_ASPECT_RATIOS)[number] {
+  const size = bookSizes.find((s) => s.id === bookSizeId) ?? bookSizes[0];
+  const targetRatio = size.widthIn / size.heightIn;
+  let closest: (typeof GEMINI_ASPECT_RATIOS)[number] = "1:1";
+  let smallestDiff = Infinity;
+  for (const ratioStr of GEMINI_ASPECT_RATIOS) {
+    const [w, h] = ratioStr.split(":").map(Number);
+    const diff = Math.abs(w / h - targetRatio);
+    if (diff < smallestDiff) {
+      smallestDiff = diff;
+      closest = ratioStr;
+    }
+  }
+  return closest;
+}
+
 export interface DummyBook {
   id: string;
   title: string;

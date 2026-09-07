@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import StepShell from "@/components/create/StepShell";
 import FilterPill from "@/components/create/FilterPill";
 import PaidBadge from "@/components/paywall/PaidBadge";
+import ClarifyModal, { type ClarifyQuestion } from "@/components/create/ClarifyModal";
 import {
   storyStyles,
   ageGroups,
@@ -18,6 +19,7 @@ import {
   educationalTypes,
   explanationStyles,
   gradeLevels,
+  bookSizes,
 } from "@/lib/dummy-data";
 import { useApp } from "@/lib/app-context";
 import { createClient } from "@/lib/supabase/client";
@@ -38,6 +40,7 @@ import {
   BookOpen,
   GraduationCap,
   Image as ImageIcon,
+  X,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -162,14 +165,20 @@ export default function CreateStep1() {
   const [educationalType, setEducationalType] = useState<string>(educationalTypes[0]);
   const [explanationStyle, setExplanationStyle] = useState<(typeof explanationStyles)[number]["id"]>("eli5");
   const [gradeLevel, setGradeLevel] = useState<string>(gradeLevels[0]);
-  const [conceptCount, setConceptCount] = useState<number>(1);
+  const [concepts, setConcepts] = useState<string[]>([""]);
   const [educationalPages, setEducationalPages] = useState(16);
+  const [bookSizeId, setBookSizeId] = useState<string>(bookSizes.find((s) => "default" in s && s.default)?.id ?? bookSizes[0].id);
 
   const pageLabel = pagePresets.find((p) => p.count === pageCount)?.count ?? pageCount;
   const isMythology = style === "Mythology";
 
-  const handleCreate = async () => {
-    if (!idea.trim()) return;
+  const [clarifyOpen, setClarifyOpen] = useState(false);
+  const [clarifyQuestions, setClarifyQuestions] = useState<ClarifyQuestion[]>([]);
+  const [checkingClarity, setCheckingClarity] = useState(false);
+
+  const handleCreateClick = async () => {
+    const hasValidInput = contentType === "educational" ? concepts.some((c) => c.trim()) : idea.trim();
+    if (!hasValidInput) return;
     if (!user) {
       openLoginModal();
       return;
@@ -190,6 +199,41 @@ export default function CreateStep1() {
       return;
     }
 
+    // Quick check first: is the idea clear enough, or would a couple of
+    // clarifying questions genuinely improve the book? This call is
+    // deliberately fail-open (see the route) — if it errors or times out,
+    // we just proceed straight to creation rather than block on it.
+    setCheckingClarity(true);
+    try {
+      const res = await fetch("/api/clarify-idea", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idea,
+          contentType,
+          pageCount: contentType === "longform" ? longformPages : contentType === "educational" ? educationalPages : pageCount,
+          concepts: contentType === "educational" ? concepts.filter((c) => c.trim()) : undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({ needsClarification: false, questions: [] }));
+      if (data.needsClarification && Array.isArray(data.questions) && data.questions.length > 0) {
+        setClarifyQuestions(data.questions);
+        setClarifyOpen(true);
+        setCheckingClarity(false);
+        return;
+      }
+    } catch {
+      // Fail open — proceed straight to creation.
+    }
+    setCheckingClarity(false);
+    await doCreateBook();
+  };
+
+  const doCreateBook = async (clarificationSummary?: string) => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
     setCreating(true);
     setCreateError(null);
 
@@ -198,9 +242,19 @@ export default function CreateStep1() {
     // it without needing a schema change.
     const finalStyle = isMythology ? `Mythology - ${mythologySubType}` : style;
 
+    const filledConcepts = concepts.map((c) => c.trim()).filter(Boolean);
+    // For Educational, the structured concept boxes ARE the real topic —
+    // the free-text box becomes optional supplementary context rather than
+    // the only place to describe what the book covers, which is what was
+    // confusing about typing "Heart, Brain & Digestive System" into one
+    // field and having no visibility into how it'd get split up.
+    const educationalIdea =
+      filledConcepts.join(", ") + (idea.trim() ? ` — ${idea.trim()}` : "") + (clarificationSummary ? ` — ${clarificationSummary}` : "");
+    const finalIdea = (contentType === "educational" ? educationalIdea : idea.trim()) + (clarificationSummary && contentType !== "educational" ? ` — ${clarificationSummary}` : "");
+
     const supabase = createClient();
     const { data: book, error } = await createBook(supabase, user.id, {
-      idea: idea.trim(),
+      idea: finalIdea,
       style: contentType === "picture" ? finalStyle : style,
       ageGroup: age,
       pageCount: contentType === "longform" ? longformPages : contentType === "educational" ? educationalPages : pageCount,
@@ -211,6 +265,7 @@ export default function CreateStep1() {
       rhymeMode: rhyme,
       isFreeTrial: isFree,
       contentType,
+      bookSizeId,
       ...(contentType === "longform" && {
         chapterCount,
         illustrationDensity,
@@ -219,7 +274,8 @@ export default function CreateStep1() {
       }),
       ...(contentType === "educational" && {
         subject,
-        conceptCount,
+        conceptCount: filledConcepts.length,
+        concepts: filledConcepts,
         explanationStyle,
         gradeLevel,
         storyType: educationalType, // reuses the same column — "story-wrapped" vs "direct concept" is educational's version of "story type"
@@ -292,19 +348,83 @@ export default function CreateStep1() {
         </div>
 
         <div className="bg-white rounded-[28px] border border-line shadow-[0_20px_50px_rgba(0,0,0,0.06)] p-5 sm:p-6">
+          {contentType === "educational" && (
+            <div className="mb-4">
+              <label className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-2 block">
+                What should this book cover?
+              </label>
+              <div className="space-y-2">
+                {concepts.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      value={c}
+                      onChange={(e) => setConcepts((prev) => prev.map((p, idx) => (idx === i ? e.target.value : p)))}
+                      placeholder={i === 0 ? 'e.g. "Heart"' : `Concept ${i + 1} (optional)`}
+                      className="flex-1 rounded-xl border border-line px-3.5 py-2.5 text-sm focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal"
+                    />
+                    {concepts.length > 1 && (
+                      <button
+                        onClick={() => setConcepts((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="text-ink-soft hover:text-red-500 shrink-0"
+                        aria-label="Remove concept"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {concepts.length < 6 && (
+                <button
+                  onClick={() => setConcepts((prev) => [...prev, ""])}
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-teal-text hover:text-teal"
+                >
+                  <Plus size={12} /> Add another concept
+                </button>
+              )}
+              <p className="text-[11px] text-ink-soft mt-2">
+                Each concept gets its own dedicated section of the book — this is what actually drives what gets written,
+                not the box below.
+              </p>
+            </div>
+          )}
+
           <textarea
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
-            rows={3}
+            rows={contentType === "educational" ? 2 : 3}
             placeholder={
               contentType === "picture"
                 ? "One sentence is enough — or paste a story you already wrote…"
                 : contentType === "longform"
                 ? "Describe the story — a premise, a world, a character's journey…"
-                : "What should this book teach? e.g. \"How photosynthesis works\" or \"The water cycle\""
+                : "Anything extra to guide the tone or angle? (optional)"
             }
             className="w-full resize-none border-none outline-none text-base sm:text-lg placeholder:text-ink-soft/70"
           />
+
+          <div className="flex items-center gap-2.5 pt-3 mt-1">
+            <FilterPill label="Book size" value={bookSizes.find((s) => s.id === bookSizeId)?.label.split(" — ")[0] ?? ""} panelClassName="w-72">
+              {(close) => (
+                <div className="space-y-1.5">
+                  {bookSizes.map((s) => (
+                    <OptionButton
+                      key={s.id}
+                      active={bookSizeId === s.id}
+                      onClick={() => {
+                        setBookSizeId(s.id);
+                        close();
+                      }}
+                      className="text-left w-full"
+                    >
+                      {s.label}
+                    </OptionButton>
+                  ))}
+                </div>
+              )}
+            </FilterPill>
+            <span className="text-[11px] text-ink-soft">Illustrations are generated to match this shape.</span>
+          </div>
 
           {contentType === "picture" && (
           <div className="flex flex-wrap items-center gap-2.5 mt-4 pt-4 border-t border-line">
@@ -677,26 +797,6 @@ export default function CreateStep1() {
 
             <span className="text-line hidden sm:inline">|</span>
 
-            <FilterPill label="Concepts" value={String(conceptCount)} panelClassName="w-56" align="right">
-              {() => (
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => setConceptCount((c) => Math.max(1, c - 1))}
-                    className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="flex-1 text-center text-sm font-semibold">{conceptCount}</span>
-                  <button
-                    onClick={() => setConceptCount((c) => Math.min(10, c + 1))}
-                    className="w-8 h-8 rounded-lg border border-line grid place-items-center hover:border-teal"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-              )}
-            </FilterPill>
-
             <span className="text-line hidden sm:inline">|</span>
 
             <FilterPill label="Pages" value={String(educationalPages)} panelClassName="w-72" align="right">
@@ -776,18 +876,20 @@ export default function CreateStep1() {
             ) : <span />}
 
             <button
-              onClick={handleCreate}
-              disabled={!idea.trim() || creating}
+              onClick={handleCreateClick}
+              disabled={(contentType === "educational" ? !concepts.some((c) => c.trim()) : !idea.trim()) || creating || checkingClarity}
               className="relative inline-flex items-center gap-2 bg-teal text-white rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-text transition-colors shrink-0"
             >
               {creating
                 ? "Creating…"
+                : checkingClarity
+                ? "Thinking…"
                 : contentType === "picture"
                 ? "Create My Story Book"
                 : contentType === "longform"
                 ? "Create My Chapter Book"
                 : "Create My Learning Book"}
-              {!creating && <ArrowRight size={16} />}
+              {!creating && !checkingClarity && <ArrowRight size={16} />}
               {isFree && contentType !== "picture" && <PaidBadge />}
             </button>
           </div>
@@ -834,6 +936,20 @@ export default function CreateStep1() {
           </div>
         </div>
       </div>
+
+      <ClarifyModal
+        open={clarifyOpen}
+        questions={clarifyQuestions}
+        onClose={() => {
+          setClarifyOpen(false);
+          doCreateBook();
+        }}
+        onSubmit={(answers) => {
+          setClarifyOpen(false);
+          const summary = clarifyQuestions.map((q, i) => `${q.question} ${answers[i]}`).join("; ");
+          doCreateBook(summary);
+        }}
+      />
     </StepShell>
   );
 }

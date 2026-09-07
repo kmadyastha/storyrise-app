@@ -4,6 +4,7 @@ import { generateImage, uploadGeneratedImage, urlToBase64 } from "@/lib/gemini";
 import { precheckCredits, chargeCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { validateAIInput, ValidationError, MAX_LENGTHS } from "@/lib/validation";
+import { bookSizeToAspectRatio } from "@/lib/dummy-data";
 
 // See app/api/generate-story/route.ts for why this is needed.
 export const maxDuration = 60;
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     throw err;
   }
 
-  const { data: book } = await supabase.from("books").select("is_free_trial").eq("id", page.book_id).single();
+  const { data: book } = await supabase.from("books").select("is_free_trial, book_size_id").eq("id", page.book_id).single();
   const isFreeTrial = book?.is_free_trial ?? false;
 
   const precheck = await precheckCredits(user.id, "page_image", isFreeTrial);
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
 
   let imageUrl: string;
   try {
-    const { bytes, mimeType } = await generateImage(prompt, references);
+    const { bytes, mimeType } = await generateImage(prompt, references, bookSizeToAspectRatio(book?.book_size_id ?? "8.5x8.5"));
     imageUrl = await uploadGeneratedImage(`pages/${pageId}.png`, bytes, mimeType);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Image generation failed";

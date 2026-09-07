@@ -33,6 +33,12 @@ export interface Book {
   concept_count: number | null;
   explanation_style: "high_concept" | "eli5" | "for_dummies" | null;
   grade_level: string | null;
+  // Trim/book size, chosen at creation time — drives the aspect ratio
+  // requested from the image model, not just export-time PDF layout.
+  book_size_id: string;
+  // Structured concept list for Educational books (e.g. ["Heart", "Brain"]).
+  // Null for picture/longform books.
+  concepts: string[] | null;
 }
 
 export interface CreateBookInput {
@@ -57,6 +63,8 @@ export interface CreateBookInput {
   conceptCount?: number;
   explanationStyle?: "high_concept" | "eli5" | "for_dummies";
   gradeLevel?: string;
+  bookSizeId: string;
+  concepts?: string[];
 }
 
 export async function createBook(supabase: SupabaseClient, userId: string, input: CreateBookInput) {
@@ -87,6 +95,8 @@ export async function createBook(supabase: SupabaseClient, userId: string, input
       concept_count: input.conceptCount ?? null,
       explanation_style: input.explanationStyle ?? null,
       grade_level: input.gradeLevel ?? null,
+      book_size_id: input.bookSizeId,
+      concepts: input.concepts && input.concepts.length > 0 ? input.concepts : null,
     })
     .select()
     .single<Book>();

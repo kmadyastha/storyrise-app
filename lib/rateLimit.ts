@@ -6,6 +6,7 @@ const WINDOW_SECONDS = 60;
 // this exists to stop a script or a stuck retry loop, not to ration normal use.
 const ROUTE_LIMITS: Record<string, number> = {
   "generate-story": 8,
+  "clarify-idea": 15,
   "generate-character-image": 15,
   "generate-page-image": 40,
   "generate-narration": 40,

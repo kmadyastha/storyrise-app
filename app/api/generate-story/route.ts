@@ -149,23 +149,44 @@ function buildEducationalPrompt(book: Book): string {
     for_dummies: "plain, step-by-step, assuming zero prior knowledge — spell out even things that might seem obvious",
   };
   const style = styleGuidance[book.explanation_style ?? "eli5"];
-  const concepts = book.concept_count ?? 1;
   const isStoryWrapped = book.story_type === "Story-wrapped";
+  const conceptList = book.concepts && book.concepts.length > 0 ? book.concepts : [book.idea];
+  const conceptsLabel = conceptList.map((c, i) => `${i + 1}. ${c}`).join("\n");
+  const extraContext = book.concepts && book.concepts.length > 0 && book.idea ? `\n\nAdditional context from the creator: "${book.idea}"` : "";
+
+  // Direct mode's per-concept page split was previously completely
+  // undefined — the prompt just said "roughly even page-space", with no
+  // guarantee concepts wouldn't blur together. Computed explicitly here so
+  // the AI has a real page range to fill per concept, not a vague hint.
+  const pagesPerConcept = Math.floor(book.page_count / conceptList.length);
+  const sequentialBlocks = conceptList
+    .map((c, i) => {
+      const start = i * pagesPerConcept + 1;
+      const end = i === conceptList.length - 1 ? book.page_count - 1 : start + pagesPerConcept - 1; // last page reserved for Q&A
+      return `  - Pages ${start}-${end}: "${c}"`;
+    })
+    .join("\n");
 
   return `You are a professional educational children's author for StoryRise, writing a factually accurate learning book — not fiction. Getting facts right matters more than being entertaining here.
 
-Write a ${book.page_count}-page learning book teaching this: "${book.idea}"
+Write a ${book.page_count}-page learning book covering these concept(s):
+${conceptsLabel}${extraContext}
 
 Constraints:
 - Subject: ${book.subject ?? "Science"}
 - Grade/age level: ${book.grade_level ?? "Grade 3-4"} — pitch vocabulary and depth exactly there
 - Explanation style: ${style}
-- ${isStoryWrapped ? "Wrap the explanation in a light narrative frame (a character discovering or exploring the concept) — but the story is a vehicle for the facts, not the point" : "Explain the concept(s) directly, without a fictional narrative frame — this is a direct explanation, not a story"}
-- Cover ${concepts} concept${concepts > 1 ? "s" : ""} total, with roughly even page-space per concept if more than one
+- ${
+    isStoryWrapped
+      ? "Wrap the explanation in a light narrative frame (a character discovering or exploring the concept(s)) — but the story is a vehicle for the facts, not the point. With multiple concepts, the same characters can carry the thread across all of them."
+      : conceptList.length > 1
+      ? `Explain the concepts directly, without a fictional narrative frame — this is a direct explanation, not a story. Cover the concepts in STRICT SEQUENTIAL BLOCKS, not blended together — dedicate these page ranges:\n${sequentialBlocks}\n  Each block should read as a clean, self-contained section on that one concept before moving to the next.`
+      : "Explain the concept directly, without a fictional narrative frame — this is a direct explanation, not a story."
+  }
 - ACCURACY IS CRITICAL: only state facts you're genuinely confident are correct and well-established for this subject and grade level. If you're not certain of a specific detail (an exact number, date, or statistic), state the underlying idea in general, safely-true terms instead of inventing a precise-sounding but unverified specific
 - Exactly ${book.page_count} pages, numbered 1 to ${book.page_count}
 - Each page's imageDescription should describe a clear, labeled, diagram-style or concept-illustration visual (not a narrative scene) that helps explain that page's idea — for an AI image generator
-- On the FINAL page only, instead of continuing the explanation, include a "Check your understanding" section: exactly 4 question-and-answer pairs testing comprehension of what was just taught, generated directly from facts already stated earlier in this same book (don't introduce new facts in the Q&A) — put these in that page's qaPairs field, and leave imageDescription null for that page
+- On the FINAL page only, instead of continuing the explanation, include a "Check your understanding" section: exactly 4 question-and-answer pairs testing comprehension of what was just taught, generated directly from facts already stated earlier in this same book (don't introduce new facts in the Q&A), covering all concepts if there's more than one — put these in that page's qaPairs field, and leave imageDescription null for that page
 - Track the setting/location loosely (can be "Classroom", "Diagram", "Nature", etc. — whatever fits) and characters (only relevant if story-wrapped; otherwise use an empty array)
 - Suggest a short, clear book title
 
