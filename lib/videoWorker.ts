@@ -39,7 +39,10 @@ export async function renderViaWorker(bookId: string, jobType: RenderJobType, pa
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({ bookId, jobType, pages }),
-      signal: AbortSignal.timeout(20000),
+      // 45s, not 20s — a Fly.io machine that's scaled to zero when idle can
+      // take real time to cold-start before it can even accept this first
+      // request, and 20s wasn't giving genuine headroom for that.
+      signal: AbortSignal.timeout(45000),
     });
     if (!kickoff.ok) {
       const data = await kickoff.json().catch(() => ({}));
@@ -48,7 +51,16 @@ export async function renderViaWorker(bookId: string, jobType: RenderJobType, pa
     const data = await kickoff.json();
     jobId = data.jobId;
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Couldn't reach the render worker." };
+    // A raw AbortSignal timeout throws a browser-native TimeoutError whose
+    // .message ("The operation was aborted due to timeout" or similar) was
+    // leaking straight through to the user instead of a real explanation.
+    const isTimeout = err instanceof Error && err.name === "TimeoutError";
+    return {
+      ok: false,
+      error: isTimeout
+        ? "The render service is starting up — please try again in a moment."
+        : "Couldn't reach the render worker — please try again.",
+    };
   }
 
   // Poll every 3s for up to ~270s total — real headroom for a cold-starting
@@ -84,7 +96,8 @@ export async function renderViaWorker(bookId: string, jobType: RenderJobType, pa
         const arrayBuffer = await resultRes.arrayBuffer();
         return { ok: true, bytes: Buffer.from(arrayBuffer), contentType };
       } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : "Couldn't fetch the rendered file." };
+        const isTimeout = err instanceof Error && err.name === "TimeoutError";
+        return { ok: false, error: isTimeout ? "Fetching the rendered file took too long — please try again." : "Couldn't fetch the rendered file." };
       }
     }
     // else still "processing" — keep polling
