@@ -20,11 +20,20 @@ export default function LoginModal() {
   // onAuthStateChange — pick that up and close the modal here too.
   useEffect(() => {
     if (loggedIn && loginModalOpen) {
-      queueMicrotask(() => {
+      (async () => {
         closeLoginModal();
         setSent(false);
-        router.push("/create");
-      });
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { count } = await supabase.from("books").select("id", { count: "exact", head: true }).eq("user_id", user.id);
+          router.push((count ?? 0) > 0 ? "/dashboard" : "/create");
+        } else {
+          router.push("/create");
+        }
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);

@@ -31,67 +31,70 @@ export default function ClarifyModal({ open, questions, onClose, onSubmit }: Pro
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[90] bg-ink/40 backdrop-blur-sm grid place-items-center px-4"
+          className="fixed inset-0 z-[90] bg-ink/45 backdrop-blur-sm overflow-y-auto py-10 sm:py-16 px-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="bg-white rounded-[24px] w-full max-w-lg p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
-            initial={{ scale: 0.95, opacity: 0, y: 10 }}
+            className="bg-white rounded-[22px] w-full max-w-md mx-auto shadow-2xl overflow-hidden"
+            initial={{ scale: 0.96, opacity: 0, y: 8 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.96, opacity: 0 }}
+            exit={{ scale: 0.97, opacity: 0 }}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-lg font-semibold flex items-center gap-2">
-                <Sparkles size={18} className="text-teal-text" /> Quick check before we start
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line bg-teal-tint/40">
+              <h2 className="font-display text-base font-semibold flex items-center gap-2">
+                <Sparkles size={16} className="text-teal-text" /> Quick check before we start
               </h2>
               <button onClick={onClose} className="text-ink-soft hover:text-ink" aria-label="Close">
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
-            <p className="text-sm text-ink-soft mb-5">
-              A couple of quick questions to make sure we build the right book — pick an option or type your own answer.
-            </p>
 
-            <div className="space-y-5">
-              {questions.map((q, i) => (
-                <div key={i}>
-                  <p className="text-sm font-medium mb-2">{q.question}</p>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {q.options.map((opt) => (
-                      <button
-                        key={opt}
-                        onClick={() => setAnswer(i, opt)}
-                        className={clsx(
-                          "text-xs font-medium rounded-full px-3 py-1.5 border transition-colors",
-                          answers[i] === opt ? "bg-teal text-white border-teal" : "border-line hover:border-teal"
-                        )}
-                      >
-                        {opt}
-                      </button>
-                    ))}
+            <div className="px-5 py-4">
+              <p className="text-xs text-ink-soft mb-4">
+                A couple of quick questions to make sure we build the right book — pick an option or type your own.
+              </p>
+
+              <div className="space-y-4">
+                {questions.map((q, i) => (
+                  <div key={i}>
+                    <p className="text-sm font-medium mb-2">{q.question}</p>
+                    <div className="flex flex-wrap gap-1.5 mb-1.5">
+                      {q.options.map((opt) => (
+                        <button
+                          key={opt}
+                          onClick={() => setAnswer(i, opt)}
+                          className={clsx(
+                            "text-xs font-medium rounded-full px-2.5 py-1 border transition-colors",
+                            answers[i] === opt ? "bg-teal text-white border-teal" : "border-line hover:border-teal"
+                          )}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={answers[i] ?? ""}
+                      onChange={(e) => setAnswer(i, e.target.value)}
+                      placeholder="Or type your own answer…"
+                      className="w-full rounded-lg border border-line px-3 py-1.5 text-xs focus:outline-none focus:border-teal"
+                    />
                   </div>
-                  <input
-                    value={answers[i] ?? ""}
-                    onChange={(e) => setAnswer(i, e.target.value)}
-                    placeholder="Or type your own answer…"
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:outline-none focus:border-teal"
-                  />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <button
-              onClick={() => onSubmit(answers)}
-              disabled={!allAnswered}
-              className="w-full mt-6 bg-teal text-white rounded-full py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-text transition-colors"
-            >
-              Continue
-            </button>
-            <button onClick={onClose} className="w-full mt-2 text-xs text-ink-soft hover:text-ink text-center">
-              Skip and generate anyway
-            </button>
+              <button
+                onClick={() => onSubmit(answers)}
+                disabled={!allAnswered}
+                className="w-full mt-5 bg-teal text-white rounded-full py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-text transition-colors"
+              >
+                Continue
+              </button>
+              <button onClick={onClose} className="w-full mt-2 text-xs text-ink-soft hover:text-ink text-center py-1">
+                Skip and generate anyway
+              </button>
+            </div>
           </motion.div>
         </motion.div>
       )}

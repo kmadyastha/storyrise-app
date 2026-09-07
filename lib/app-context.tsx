@@ -74,10 +74,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProfile(session.user.id);
+        // Only a genuine fresh sign-in should ever trigger the "redirect
+        // straight to dashboard" behavior — not session restoration on
+        // ordinary page loads (that was firing this same check every time
+        // the marketing page rendered at all, including when someone who
+        // was already logged in clicked a nav link to read Features or
+        // Pricing, randomly yanking them back to /dashboard mid-scroll).
+        if (event === "SIGNED_IN" && typeof window !== "undefined") {
+          sessionStorage.setItem("storyrise_just_signed_in", String(Date.now()));
+        }
       } else {
         setTierState("none");
         setCreditsState(0);

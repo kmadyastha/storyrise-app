@@ -99,6 +99,34 @@ function OptionButton({
   );
 }
 
+// Shared across all 3 content types' filter rows — defined once so it can
+// sit inline with the other filters (Ages, Subject, etc.) as asked, rather
+// than living in its own separate, disconnected row above them.
+function BookSizeFilterPill({ bookSizeId, setBookSizeId }: { bookSizeId: string; setBookSizeId: (id: string) => void }) {
+  return (
+    <FilterPill label="Book size" value={bookSizes.find((s) => s.id === bookSizeId)?.label.split(" — ")[0] ?? ""} panelClassName="w-72">
+      {(close) => (
+        <div className="space-y-1.5">
+          {bookSizes.map((s) => (
+            <OptionButton
+              key={s.id}
+              active={bookSizeId === s.id}
+              onClick={() => {
+                setBookSizeId(s.id);
+                close();
+              }}
+              className="text-left w-full"
+            >
+              {s.label}
+            </OptionButton>
+          ))}
+          <p className="text-[11px] text-ink-soft pt-1 px-1">Illustrations are generated to match this shape.</p>
+        </div>
+      )}
+    </FilterPill>
+  );
+}
+
 // Accordion section for the redesigned Advanced Options panel — structured,
 // StoryBee-style groups instead of one flat stack of controls.
 function AccordionSection({
@@ -225,7 +253,6 @@ export default function CreateStep1() {
     } catch {
       // Fail open — proceed straight to creation.
     }
-    setCheckingClarity(false);
     await doCreateBook();
   };
 
@@ -235,6 +262,7 @@ export default function CreateStep1() {
       return;
     }
     setCreating(true);
+    setCheckingClarity(false);
     setCreateError(null);
 
     // Mythology sub-type is packed into the stored style value itself
@@ -403,31 +431,10 @@ export default function CreateStep1() {
             className="w-full resize-none border-none outline-none text-base sm:text-lg placeholder:text-ink-soft/70"
           />
 
-          <div className="flex items-center gap-2.5 pt-3 mt-1">
-            <FilterPill label="Book size" value={bookSizes.find((s) => s.id === bookSizeId)?.label.split(" — ")[0] ?? ""} panelClassName="w-72">
-              {(close) => (
-                <div className="space-y-1.5">
-                  {bookSizes.map((s) => (
-                    <OptionButton
-                      key={s.id}
-                      active={bookSizeId === s.id}
-                      onClick={() => {
-                        setBookSizeId(s.id);
-                        close();
-                      }}
-                      className="text-left w-full"
-                    >
-                      {s.label}
-                    </OptionButton>
-                  ))}
-                </div>
-              )}
-            </FilterPill>
-            <span className="text-[11px] text-ink-soft">Illustrations are generated to match this shape.</span>
-          </div>
-
           {contentType === "picture" && (
           <div className="flex flex-wrap items-center gap-2.5 mt-4 pt-4 border-t border-line">
+            <BookSizeFilterPill bookSizeId={bookSizeId} setBookSizeId={setBookSizeId} />
+            <span className="text-line hidden sm:inline">|</span>
             <FilterPill label="Ages" value={age}>
               {(close) => (
                 <div className="grid grid-cols-2 gap-1.5">
@@ -604,6 +611,8 @@ export default function CreateStep1() {
 
           {contentType === "longform" && (
           <div className="flex flex-wrap items-center gap-2.5 mt-4 pt-4 border-t border-line">
+            <BookSizeFilterPill bookSizeId={bookSizeId} setBookSizeId={setBookSizeId} />
+            <span className="text-line hidden sm:inline">|</span>
             <FilterPill label="Ages" value={age}>
               {(close) => (
                 <div className="grid grid-cols-2 gap-1.5">
@@ -729,6 +738,8 @@ export default function CreateStep1() {
 
           {contentType === "educational" && (
           <div className="flex flex-wrap items-center gap-2.5 mt-4 pt-4 border-t border-line">
+            <BookSizeFilterPill bookSizeId={bookSizeId} setBookSizeId={setBookSizeId} />
+            <span className="text-line hidden sm:inline">|</span>
             <FilterPill label="Subject" value={subject} panelClassName="w-80">
               {(close) => (
                 <div className="grid grid-cols-2 gap-1.5">
@@ -794,8 +805,6 @@ export default function CreateStep1() {
                 </div>
               )}
             </FilterPill>
-
-            <span className="text-line hidden sm:inline">|</span>
 
             <span className="text-line hidden sm:inline">|</span>
 
