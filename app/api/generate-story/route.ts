@@ -15,7 +15,7 @@ import type { Book } from "@/lib/supabase/queries";
 // old 60s — 120 gives real headroom for large books without maxing it out.
 // Requires Fluid Compute to be enabled on this project (Settings → Functions
 // → Fluid Compute) — without it, any value above 60 fails the build.
-export const maxDuration = 120;
+export const maxDuration = 280;
 
 interface ParsedPage {
   page: number;
