@@ -382,6 +382,7 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
         bookId={bookId}
         format={book?.format ?? "classic"}
         pageCount={book?.page_count ?? pages.length}
+        bookSizeId={book?.book_size_id ?? "8.5x8.5"}
         pages={pages.map((p) => ({ id: p.id, page_number: p.page_number, audio_url: p.audio_url }))}
         onPageNarrated={(pageId, audioUrl) =>
           setPages((prev) => prev.map((p) => (p.id === pageId ? { ...p, audio_url: audioUrl } : p)))

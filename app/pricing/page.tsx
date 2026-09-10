@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { pricingTiers, topupPacks } from "@/lib/dummy-data";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -36,6 +37,7 @@ const creditCosts = [
 export default function PricingPage() {
   const { tier, setTier, triggerCelebration } = useApp();
   const router = useRouter();
+  const [buyMessage, setBuyMessage] = useState<string | null>(null);
 
   const choose = (id: string) => {
     setTier(id as Tier);
@@ -143,7 +145,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 sm:px-8 py-14">
+      <section id="topup" className="mx-auto max-w-6xl px-5 sm:px-8 py-14 scroll-mt-24">
         <h2 className="font-display text-2xl font-semibold mb-2">Need more credits, no subscription?</h2>
         <p className="text-ink-soft mb-6">Top-up packs work with or without an active plan — no expiry on top-up credits.</p>
         <div className="grid sm:grid-cols-3 gap-5">
@@ -153,10 +155,18 @@ export default function PricingPage() {
                 <div className="text-xl font-display font-semibold">{p.price}</div>
                 <div className="text-sm text-ink-soft">{p.credits} credits</div>
               </div>
-              <Button size="sm" variant="outline">Buy</Button>
+              <Button size="sm" variant="outline" onClick={() => setBuyMessage(p.id)}>
+                Buy
+              </Button>
             </Card>
           ))}
         </div>
+        {buyMessage && (
+          <p className="text-sm text-tangerine-text bg-tangerine-tint rounded-xl px-4 py-3 mt-4">
+            Payments aren&rsquo;t live yet — we&rsquo;re setting up secure checkout and will have it ready soon. Thanks for your
+            patience!
+          </p>
+        )}
       </section>
 
       <Footer />

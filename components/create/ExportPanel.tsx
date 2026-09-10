@@ -24,6 +24,11 @@ interface Props {
   bookId: string;
   format: "classic" | "immersive";
   pageCount: number;
+  /** Chosen once at book creation — illustrations were already generated to
+   * match this shape, so it's shown here read-only, not re-selectable at
+   * export time (that would create a mismatch between the actual image
+   * proportions and the exported layout). */
+  bookSizeId: string;
   /** Needed to know whether narration is complete before a narrated-video
    * or audiobook export — if it isn't, the narration drawer opens instead
    * of just showing an error telling the user to go do it elsewhere. */
@@ -52,7 +57,7 @@ const EXPORT_ROUTE: Record<string, string> = {
 // These two need every page narrated before they can actually render.
 const NEEDS_NARRATION = new Set(["video_narrated", "audiobook"]);
 
-export default function ExportPanel({ open, onClose, bookId, format, pageCount, pages, onPageNarrated }: Props) {
+export default function ExportPanel({ open, onClose, bookId, format, pageCount, bookSizeId, pages, onPageNarrated }: Props) {
   const { tier, openUpgradeModal } = useApp();
   const isFree = tier === "none";
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -67,7 +72,6 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
     return () => clearInterval(interval);
   }, [downloading]);
   const [error, setError] = useState<string | null>(null);
-  const [bookSizeId, setBookSizeId] = useState<string>(bookSizes.find((s) => "default" in s && s.default)?.id ?? bookSizes[0].id);
   const [narrationDrawerFor, setNarrationDrawerFor] = useState<string | null>(null);
 
   const isLocked = (id: string) => isFree && !["pdf", "pptx"].includes(id);
@@ -81,7 +85,7 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
       const res = await fetch(`/api/export/${routePath}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId, bookSizeId }),
+        body: JSON.stringify({ bookId }),
       });
 
       if (!res.ok) {
@@ -133,14 +137,14 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[80] bg-ink/40 backdrop-blur-sm grid place-items-center px-4"
+          className="fixed inset-0 z-[80] bg-ink/40 backdrop-blur-sm overflow-y-auto py-10 sm:py-16 px-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
         >
           <motion.div
-            className="bg-white rounded-[24px] w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-[24px] w-full max-w-2xl mx-auto p-6 shadow-2xl"
             initial={{ scale: 0.94, opacity: 0, y: 10 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0 }}
@@ -153,26 +157,11 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
               </button>
             </div>
 
-            {/* Trim size — applies to PDF/PPTX now, will apply to KDP/Etsy in Phase 4 too */}
-            <div className="mb-5">
-              <label className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-1.5 block">
-                Book size / trim
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {bookSizes.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setBookSizeId(s.id)}
-                    className={clsx(
-                      "text-xs rounded-full px-3 py-1.5 border transition-colors",
-                      bookSizeId === s.id ? "bg-teal text-white border-teal" : "border-line hover:border-teal"
-                    )}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="text-xs text-ink-soft mb-5">
+              Book size:{" "}
+              <span className="font-medium text-ink">{bookSizes.find((s) => s.id === bookSizeId)?.label ?? bookSizeId}</span>
+              <span className="text-ink-soft"> — set when this book was created, since illustrations were generated to match it.</span>
+            </p>
 
             <div className="grid sm:grid-cols-2 gap-3">
               {exportOptions.map((opt) => {

@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  const { bookId, bookSizeId } = await request.json().catch(() => ({}));
+  const { bookId } = await request.json().catch(() => ({}));
 
   if (!bookId) {
     return NextResponse.json({ error: "Missing bookId" }, { status: 400 });
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Etsy digital export isn't available on the free trial — upgrade to unlock it." }, { status: 403 });
   }
 
-  const size = bookSizes.find((s) => s.id === bookSizeId) ?? bookSizes.find((s) => "default" in s && s.default) ?? bookSizes[0];
+  const size = bookSizes.find((s) => s.id === book.book_size_id) ?? bookSizes.find((s) => "default" in s && s.default) ?? bookSizes[0];
 
   // Same interior build as KDP's print file (same margins/typography), just
   // without KDP's print-specific bleed padding — this is a digital-only file.
