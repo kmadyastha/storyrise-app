@@ -30,11 +30,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many requests — please wait a moment and try again." }, { status: 429 });
   }
 
-  const { data: page, error: pageError } = await supabase
-    .from("story_pages")
-    .select("*")
-    .eq("id", pageId)
-    .single();
+  // Same reasoning as generate-character-image/route.ts: this row may have
+  // been inserted by a different serverless invocation (generate-story)
+  // moments ago, and the Generating step fires these requests immediately
+  // after. A short bounded retry is the standard mitigation for this class
+  // of read-after-write timing gap.
+  let page = null;
+  let pageError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const result = await supabase.from("story_pages").select("*").eq("id", pageId).single();
+    page = result.data;
+    pageError = result.error;
+    if (page) break;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 500));
+  }
 
   if (pageError || !page) {
     return NextResponse.json({ error: "Page not found" }, { status: 404 });

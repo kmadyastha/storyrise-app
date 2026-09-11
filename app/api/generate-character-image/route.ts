@@ -30,11 +30,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many requests — please wait a moment and try again." }, { status: 429 });
   }
 
-  const { data: character, error: charError } = await supabase
-    .from("characters")
-    .select("*")
-    .eq("id", characterId)
-    .single();
+  // The character row may have been inserted by a different serverless
+  // invocation (generate-story) just moments ago — an immediate follow-up
+  // request like this one can occasionally land on a connection that
+  // hasn't yet seen that very recent commit. This showed up specifically
+  // as a fast mobile flow (generate story → jump straight to Characters)
+  // failing with "Character not found", while the exact same book worked
+  // fine moments later from a fresh session. A short bounded retry is the
+  // standard mitigation for this class of read-after-write timing gap.
+  let character = null;
+  let charError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const result = await supabase.from("characters").select("*").eq("id", characterId).single();
+    character = result.data;
+    charError = result.error;
+    if (character) break;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 500));
+  }
 
   if (charError || !character) {
     return NextResponse.json({ error: "Character not found" }, { status: 404 });
