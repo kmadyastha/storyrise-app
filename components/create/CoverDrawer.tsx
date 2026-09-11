@@ -97,7 +97,7 @@ export default function CoverDrawer({ open, onClose, onGenerated, bookId, bookTi
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-[80] bg-ink/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[80] bg-ink/40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

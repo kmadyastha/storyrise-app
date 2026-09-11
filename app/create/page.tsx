@@ -341,35 +341,35 @@ export default function CreateStep1() {
       </div>
 
       <div className="max-w-3xl mx-auto">
-        <div className="flex justify-center mb-5">
-          <div className="inline-flex items-center gap-1 bg-paper rounded-full p-1 border border-line">
+        <div className="flex justify-center mb-5 overflow-x-auto">
+          <div className="inline-flex items-center gap-1 bg-paper rounded-full p-1 border border-line shrink-0">
             <button
               onClick={() => setContentType("picture")}
               className={clsx(
-                "inline-flex items-center gap-1.5 text-sm font-medium rounded-full px-4 py-2 transition-colors",
+                "inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium rounded-full px-3 sm:px-4 py-2 transition-colors whitespace-nowrap shrink-0",
                 contentType === "picture" ? "bg-teal text-white" : "text-ink-soft hover:text-ink"
               )}
             >
-              <ImageIcon size={14} /> Picture Story Book
+              <ImageIcon size={14} className="shrink-0" /> <span className="sm:hidden">Picture</span><span className="hidden sm:inline">Picture Story Book</span>
             </button>
             <button
               onClick={() => setContentType("longform")}
               className={clsx(
-                "relative inline-flex items-center gap-1.5 text-sm font-medium rounded-full px-4 py-2 transition-colors",
+                "relative inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium rounded-full px-3 sm:px-4 py-2 transition-colors whitespace-nowrap shrink-0",
                 contentType === "longform" ? "bg-teal text-white" : "text-ink-soft hover:text-ink"
               )}
             >
-              <BookOpen size={14} /> Long-Form Story Book
+              <BookOpen size={14} className="shrink-0" /> <span className="sm:hidden">Chapter Book</span><span className="hidden sm:inline">Long-Form Story Book</span>
               {isFree && contentType !== "longform" && <PaidBadge inline />}
             </button>
             <button
               onClick={() => setContentType("educational")}
               className={clsx(
-                "relative inline-flex items-center gap-1.5 text-sm font-medium rounded-full px-4 py-2 transition-colors",
+                "relative inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium rounded-full px-3 sm:px-4 py-2 transition-colors whitespace-nowrap shrink-0",
                 contentType === "educational" ? "bg-teal text-white" : "text-ink-soft hover:text-ink"
               )}
             >
-              <GraduationCap size={14} /> Educational
+              <GraduationCap size={14} className="shrink-0" /> Educational
               {isFree && contentType !== "educational" && <PaidBadge inline />}
             </button>
           </div>

@@ -235,7 +235,7 @@ export default function ProCelebration() {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[100] grid place-items-center bg-ink/40 backdrop-blur-sm px-4"
+        className="fixed inset-0 z-[100] grid place-items-center bg-ink/40 px-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

@@ -200,8 +200,8 @@ export default function PreviewStep({ params }: { params: Promise<{ bookId: stri
             {/* Text overlaid directly on the full image — a 75%-opaque dark
                 backing (25% see-through) keeps it legible against any
                 artwork without hiding the illustration itself. */}
-            <div className="absolute inset-x-4 top-4 bg-black/90 rounded-xl px-4 py-3">
-              <p className="text-sm leading-relaxed text-white">{page.narration}</p>
+            <div className="absolute inset-x-2 sm:inset-x-4 top-2 sm:top-4 bg-black/90 rounded-xl px-3 sm:px-4 py-2 sm:py-3 max-h-[55%] overflow-y-auto">
+              <p className="text-xs sm:text-sm leading-snug sm:leading-relaxed text-white">{page.narration}</p>
             </div>
             {regenerating && (
               <div className="absolute inset-0 grid place-items-center">

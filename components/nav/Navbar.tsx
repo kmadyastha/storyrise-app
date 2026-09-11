@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useApp } from "@/lib/app-context";
 import ProfileMenu from "@/components/nav/ProfileMenu";
+import CreditsMenu from "@/components/nav/CreditsMenu";
 import { ChevronDown, ArrowRight, LayoutGrid } from "lucide-react";
 
 const navLinks = [
@@ -47,13 +48,13 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`sticky top-0 left-0 right-0 z-[1000] flex items-center justify-between px-10 py-4 transition-all duration-[900ms] ${
-        scrolled ? "shadow-[0_2px_30px_rgba(0,0,0,0.06)] py-3" : ""
+      className={`sticky top-0 left-0 right-0 z-[1000] flex items-center justify-between px-4 sm:px-10 py-3 sm:py-4 transition-all duration-[900ms] ${
+        scrolled ? "shadow-[0_2px_30px_rgba(0,0,0,0.06)] sm:py-3" : ""
       }`}
       style={{ backgroundColor: "var(--current-hero-bg)" }}
     >
-      <Link href="/" className="flex items-center gap-2 font-fredoka font-bold text-[26px] text-teal-text no-underline">
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <Link href="/" className="flex items-center gap-1.5 sm:gap-2 font-fredoka font-bold text-[19px] sm:text-[26px] text-teal-text no-underline shrink-0">
+        <svg width="24" height="24" className="sm:w-8 sm:h-8" viewBox="0 0 32 32" fill="none">
           <path d="M16 2L4 9V23L16 30L28 23V9L16 2Z" fill="#00BCC8" opacity="0.2" />
           <path d="M16 2L4 9V23L16 30L28 23V9L16 2Z" stroke="#00BCC8" strokeWidth="2.5" strokeLinejoin="round" />
           <path d="M16 8V24M10 12V20M22 12V20" stroke="#00838A" strokeWidth="2" strokeLinecap="round" />
@@ -121,12 +122,10 @@ export default function Navbar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {loggedIn ? (
           <>
-            <span className="hidden sm:inline-flex text-xs font-medium text-[#555] bg-teal-tint text-teal-text rounded-full px-3 py-1.5">
-              {tier === "none" ? "Free" : tier} · {credits} credits
-            </span>
+            <CreditsMenu tier={tier} credits={credits} />
             {tier === "none" && (
               <button
                 onClick={openUpgradeModal}
@@ -136,7 +135,7 @@ export default function Navbar() {
               </button>
             )}
             <Link href="/create">
-              <button className="bg-teal text-white border-none px-6 py-2.5 rounded-full font-fredoka font-semibold text-[15px] cursor-pointer transition-all hover:bg-teal-text hover:-translate-y-0.5 shadow-[0_4px_16px_rgba(0,188,200,0.3)] hover:shadow-[0_6px_24px_rgba(0,188,200,0.4)]">
+              <button className="bg-teal text-white border-none px-4 sm:px-6 py-2 sm:py-2.5 rounded-full font-fredoka font-semibold text-[13px] sm:text-[15px] cursor-pointer transition-all hover:bg-teal-text hover:-translate-y-0.5 shadow-[0_4px_16px_rgba(0,188,200,0.3)] hover:shadow-[0_6px_24px_rgba(0,188,200,0.4)] whitespace-nowrap">
                 Start Creating
               </button>
             </Link>
@@ -145,7 +144,7 @@ export default function Navbar() {
         ) : (
           <button
             onClick={openLoginModal}
-            className="bg-teal text-white border-none px-6 py-2.5 rounded-full font-fredoka font-semibold text-[15px] cursor-pointer transition-all hover:bg-teal-text hover:-translate-y-0.5 shadow-[0_4px_16px_rgba(0,188,200,0.3)] hover:shadow-[0_6px_24px_rgba(0,188,200,0.4)]"
+            className="bg-teal text-white border-none px-4 sm:px-6 py-2 sm:py-2.5 rounded-full font-fredoka font-semibold text-[13px] sm:text-[15px] cursor-pointer transition-all hover:bg-teal-text hover:-translate-y-0.5 shadow-[0_4px_16px_rgba(0,188,200,0.3)] hover:shadow-[0_6px_24px_rgba(0,188,200,0.4)] whitespace-nowrap"
           >
             Start Creating
           </button>

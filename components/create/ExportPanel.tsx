@@ -7,8 +7,19 @@ import NarrationDrawer, { type NarrationDrawerPage } from "@/components/create/N
 import { exportOptions, bookSizes } from "@/lib/dummy-data";
 import { computeVideoCreditCost, AUDIOBOOK_EXPORT_COST } from "@/lib/credits";
 import { useApp } from "@/lib/app-context";
-import { Download, Droplet, X, AlertCircle, Clock, RefreshCw } from "lucide-react";
+import { Download, Droplet, X, AlertCircle, Clock, RefreshCw, FileText, Printer, ShoppingBag, Presentation, BookOpenCheck, Headphones, Film, Video } from "lucide-react";
 import clsx from "clsx";
+
+const EXPORT_ICONS: Record<string, { icon: typeof FileText; bg: string; fg: string }> = {
+  pdf: { icon: FileText, bg: "bg-red-50", fg: "text-red-500" },
+  kdp: { icon: Printer, bg: "bg-orange-50", fg: "text-orange-500" },
+  etsy: { icon: ShoppingBag, bg: "bg-amber-50", fg: "text-amber-600" },
+  pptx: { icon: Presentation, bg: "bg-blue-50", fg: "text-blue-500" },
+  flipbook: { icon: BookOpenCheck, bg: "bg-teal-tint", fg: "text-teal-text" },
+  audiobook: { icon: Headphones, bg: "bg-purple-50", fg: "text-purple-500" },
+  video_silent: { icon: Film, bg: "bg-slate-100", fg: "text-slate-500" },
+  video_narrated: { icon: Video, bg: "bg-pink-50", fg: "text-pink-500" },
+};
 
 const SLOW_EXPORTS = new Set(["video_narrated", "video_silent", "audiobook"]);
 
@@ -77,7 +88,69 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
   const isLocked = (id: string) => isFree && !["pdf", "pptx"].includes(id);
   const belowMinPages = (opt: (typeof exportOptions)[number]) => "minPages" in opt && pageCount < (opt.minPages as number);
 
+  const runSlowExport = async (id: string) => {
+    setError(null);
+    setDownloading(id);
+    try {
+      const startRes = await fetch(`/api/export/${id.replace(/_/g, "-")}/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookId }),
+      });
+      const startData = await startRes.json().catch(() => ({}));
+      if (!startRes.ok || !startData.jobId) {
+        throw new Error(startData.error || "Couldn't start the export — please try again.");
+      }
+      const jobId = startData.jobId;
+
+      // Polling now happens entirely in the browser — no single server
+      // function has to stay open for the whole render, so there's no
+      // artificial ceiling tied to Vercel's own execution limits anymore.
+      // ~10 minutes (200 x 3s) is a generous real cap for even a long
+      // book, not a number chosen to fit inside someone else's timeout.
+      let status = "queued";
+      for (let attempt = 0; attempt < 200; attempt++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const statusRes = await fetch(`/api/export/render-status?jobId=${jobId}`);
+        const statusData = await statusRes.json().catch(() => ({}));
+        if (!statusRes.ok) throw new Error(statusData.error || "Lost track of the render job.");
+        status = statusData.status;
+        if (status === "error") throw new Error(statusData.error || "Rendering failed.");
+        if (status === "done") break;
+      }
+      if (status !== "done") {
+        throw new Error("Rendering took too long and was cut off — please try again, or try a shorter book.");
+      }
+
+      const resultRes = await fetch(`/api/export/render-result?jobId=${jobId}&jobType=${id}&bookId=${bookId}`);
+      if (!resultRes.ok) {
+        const data = await resultRes.json().catch(() => ({}));
+        throw new Error(data.error || "Rendering finished but the file couldn't be fetched.");
+      }
+
+      const blob = await resultRes.blob();
+      const disposition = resultRes.headers.get("content-disposition") || "";
+      const match = disposition.match(/filename="(.+)"/);
+      const filename = match?.[1] || `storybook.${id}`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Export failed — please try again.");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const runExport = async (id: string) => {
+    if (SLOW_EXPORTS.has(id)) return runSlowExport(id);
+
     setError(null);
     setDownloading(id);
     try {
@@ -137,33 +210,40 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[80] bg-ink/40 backdrop-blur-sm overflow-y-auto py-10 sm:py-16 px-4"
+          className="fixed inset-0 z-[80] bg-ink/40 grid place-items-center px-4 py-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
         >
+          {/* No backdrop-blur, no transform-based entrance (opacity only),
+              and the card owns its own bounded height + scroll with a
+              fixed header — all found to matter for reliable touch/scroll
+              behavior on mobile. The close button living outside the
+              scrollable area means it's always reachable even if the
+              content itself somehow fails to scroll. */}
           <motion.div
-            className="bg-white rounded-[24px] w-full max-w-2xl mx-auto p-6 shadow-2xl"
-            initial={{ scale: 0.94, opacity: 0, y: 10 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.96, opacity: 0 }}
+            className="bg-white rounded-[24px] w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-line shrink-0">
               <h2 className="font-display text-xl font-semibold">Export your book</h2>
               <button onClick={onClose} className="text-ink-soft hover:text-ink" aria-label="Close">
                 <X size={20} />
               </button>
             </div>
 
+            <div className="p-6 overflow-y-auto">
             <p className="text-xs text-ink-soft mb-5">
               Book size:{" "}
               <span className="font-medium text-ink">{bookSizes.find((s) => s.id === bookSizeId)?.label ?? bookSizeId}</span>
               <span className="text-ink-soft"> — set when this book was created, since illustrations were generated to match it.</span>
             </p>
 
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {exportOptions.map((opt) => {
                 const disabledByFormat = opt.immersiveOnly && format !== "immersive";
                 const disabledByPages = belowMinPages(opt);
@@ -171,68 +251,74 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
                 const live = LIVE_EXPORTS.has(opt.id);
                 const disabled = disabledByFormat || disabledByPages || (!live && !locked);
                 const needsNarration = NEEDS_NARRATION.has(opt.id) && pages.some((p) => !p.audio_url) && pages.length > 0;
+                const iconInfo = EXPORT_ICONS[opt.id];
+                const Icon = iconInfo?.icon ?? FileText;
                 return (
                   <button
                     key={opt.id}
                     onClick={() => !disabled && handleExport(opt.id)}
                     disabled={disabled || downloading === opt.id}
                     className={clsx(
-                      "relative text-left rounded-2xl border p-4 transition-colors",
+                      "relative flex flex-col items-center text-center rounded-2xl border p-3 transition-colors",
                       disabled
                         ? "opacity-50 border-line cursor-not-allowed"
                         : "border-line hover:border-teal hover:bg-teal-tint/30"
                     )}
                   >
                     {locked && <PaidBadge />}
-                    <h3 className="font-display font-semibold mb-1 text-sm">{opt.label}</h3>
-                    <p className="text-xs text-ink-soft mb-3">
+                    <div className={clsx("w-10 h-10 rounded-xl grid place-items-center mb-2", iconInfo?.bg ?? "bg-teal-tint")}>
+                      <Icon size={18} className={iconInfo?.fg ?? "text-teal-text"} />
+                    </div>
+                    <h3 className="font-display font-semibold text-xs mb-1">{opt.label}</h3>
+                    <p className="text-[10px] text-ink-soft mb-2 leading-snug">
                       {disabledByFormat
-                        ? "Classic books export as PDF, PPTX, or KDP print files."
+                        ? "Classic-only books can't use this format."
                         : disabledByPages
-                        ? `Needs at least ${(opt as { minPages: number }).minPages} pages — this book has ${pageCount}.`
+                        ? `Needs ${(opt as { minPages: number }).minPages}+ pages`
                         : needsNarration
-                        ? "We'll help you generate narration first."
+                        ? "We'll help narrate first"
                         : opt.desc}
                     </p>
                     {isFree && (opt.id === "pdf" || opt.id === "pptx") && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-tangerine-text bg-tangerine-tint rounded-full px-2 py-0.5 w-fit mb-2">
-                        <Droplet size={10} /> Watermarked
+                      <span className="inline-flex items-center gap-1 text-[10px] text-tangerine-text bg-tangerine-tint rounded-full px-1.5 py-0.5 w-fit mb-1.5">
+                        <Droplet size={9} /> Watermarked
                       </span>
                     )}
                     {!isFree && !needsNarration && !disabled && (opt.id === "video_narrated" || opt.id === "video_silent") && (
-                      <span className="inline-block text-[11px] text-teal-text bg-teal-tint rounded-full px-2 py-0.5 mb-2">
+                      <span className="inline-block text-[10px] text-teal-text bg-teal-tint rounded-full px-1.5 py-0.5 mb-1.5">
                         {computeVideoCreditCost(pageCount)} credits
                       </span>
                     )}
                     {!isFree && !needsNarration && !disabled && opt.id === "audiobook" && (
-                      <span className="inline-block text-[11px] text-teal-text bg-teal-tint rounded-full px-2 py-0.5 mb-2">
+                      <span className="inline-block text-[10px] text-teal-text bg-teal-tint rounded-full px-1.5 py-0.5 mb-1.5">
                         {AUDIOBOOK_EXPORT_COST} credits
                       </span>
                     )}
                     {disabledByPages ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
-                        <AlertCircle size={13} /> Needs more pages
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-soft">
+                        <AlertCircle size={12} /> More pages
                       </span>
                     ) : !live && !locked ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
-                        <Clock size={13} /> Coming soon
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-soft">
+                        <Clock size={12} /> Soon
                       </span>
                     ) : downloading === opt.id ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-text">
-                        <RefreshCw size={13} className="animate-spin" />
-                        {SLOW_EXPORTS.has(opt.id)
-                          ? `Rendering… ${elapsedSeconds}s${elapsedSeconds > 20 ? " (this can take a couple of minutes)" : ""}`
-                          : "Preparing…"}
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-text">
+                        <RefreshCw size={12} className="animate-spin" />
+                        {SLOW_EXPORTS.has(opt.id) ? `${elapsedSeconds}s` : ""}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-text">
-                        <Download size={13} /> Export
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-text">
+                        <Download size={12} /> Export
                       </span>
                     )}
                   </button>
                 );
               })}
             </div>
+            {downloading && SLOW_EXPORTS.has(downloading) && elapsedSeconds > 20 && (
+              <p className="text-[11px] text-ink-soft text-center mt-2">Rendering can take a couple of minutes for longer books.</p>
+            )}
 
             {error && (
               <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3 mt-4">
@@ -244,6 +330,7 @@ export default function ExportPanel({ open, onClose, bookId, format, pageCount, 
             <p className="text-[11px] text-ink-soft mt-4">
               This book is automatically deleted 30 days after it was created. No backups are kept.
             </p>
+            </div>
           </motion.div>
 
           <NarrationDrawer

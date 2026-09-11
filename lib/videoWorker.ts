@@ -14,6 +14,92 @@ export interface RenderResult {
   error?: string;
 }
 
+export interface KickoffResult {
+  ok: boolean;
+  jobId?: string;
+  error?: string;
+}
+
+/** Starts a render job and returns immediately with a jobId — does not
+ * wait for it to finish. Pairs with checkRenderJobStatus and
+ * fetchRenderJobResult below for the browser-polling flow, where each
+ * individual Vercel request stays short (avoiding Vercel's own function
+ * execution ceiling), instead of one function call internally polling for
+ * the full multi-minute render — which is what renderViaWorker below does,
+ * and what was causing "Rendering took too long and was cut off" on longer
+ * books: the render itself was fine, but no single Vercel function
+ * invocation could safely stay open long enough to see it through. */
+export async function kickoffRenderJob(bookId: string, jobType: RenderJobType, pages: RenderPage[]): Promise<KickoffResult> {
+  const url = process.env.FLY_WORKER_URL;
+  const secret = process.env.WORKER_SECRET;
+  if (!url) return { ok: false, error: "Video rendering isn't configured yet (FLY_WORKER_URL isn't set)." };
+  if (!secret) return { ok: false, error: "Video rendering isn't configured yet (WORKER_SECRET isn't set)." };
+
+  try {
+    const kickoff = await fetch(`${url}/render`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${secret}` },
+      body: JSON.stringify({ bookId, jobType, pages }),
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!kickoff.ok) {
+      const data = await kickoff.json().catch(() => ({}));
+      return { ok: false, error: data.error || `Couldn't start rendering (worker returned ${kickoff.status}).` };
+    }
+    const data = await kickoff.json();
+    return { ok: true, jobId: data.jobId };
+  } catch (err) {
+    const isTimeout = err instanceof Error && err.name === "TimeoutError";
+    return {
+      ok: false,
+      error: isTimeout ? "The render service is starting up — please try again in a moment." : "Couldn't reach the render worker — please try again.",
+    };
+  }
+}
+
+export interface JobStatusResult {
+  ok: boolean;
+  status?: "queued" | "processing" | "done" | "error";
+  error?: string;
+}
+
+export async function checkRenderJobStatus(jobId: string): Promise<JobStatusResult> {
+  const url = process.env.FLY_WORKER_URL;
+  const secret = process.env.WORKER_SECRET;
+  if (!url || !secret) return { ok: false, error: "Video rendering isn't configured yet." };
+
+  try {
+    const res = await fetch(`${url}/render/${jobId}/status`, { headers: { Authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(15000) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error || "Lost track of the render job (it may have expired)." };
+    if (data.status === "error") return { ok: false, status: "error", error: data.error || "Rendering failed" };
+    return { ok: true, status: data.status };
+  } catch (err) {
+    const isTimeout = err instanceof Error && err.name === "TimeoutError";
+    return { ok: false, error: isTimeout ? "Checking render status took too long — please try again." : "Couldn't reach the render worker." };
+  }
+}
+
+export async function fetchRenderJobResult(jobId: string, jobType: RenderJobType): Promise<RenderResult> {
+  const url = process.env.FLY_WORKER_URL;
+  const secret = process.env.WORKER_SECRET;
+  if (!url || !secret) return { ok: false, error: "Video rendering isn't configured yet." };
+
+  try {
+    const res = await fetch(`${url}/render/${jobId}/result`, { headers: { Authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(60000) });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error || "Rendering finished but the file couldn't be fetched." };
+    }
+    const contentType = res.headers.get("content-type") ?? (jobType === "audiobook" ? "audio/mpeg" : "video/mp4");
+    const arrayBuffer = await res.arrayBuffer();
+    return { ok: true, bytes: Buffer.from(arrayBuffer), contentType };
+  } catch (err) {
+    const isTimeout = err instanceof Error && err.name === "TimeoutError";
+    return { ok: false, error: isTimeout ? "Fetching the rendered file took too long — please try again." : "Couldn't fetch the rendered file." };
+  }
+}
+
 /** Sends a render job (narrated video, silent video, or audiobook) to the
  * Fly.io worker and returns the finished file's bytes.
  *

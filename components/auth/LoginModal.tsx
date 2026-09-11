@@ -72,7 +72,7 @@ export default function LoginModal() {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[95] bg-ink/40 backdrop-blur-sm grid place-items-center px-4"
+        className="fixed inset-0 z-[95] bg-ink/40 grid place-items-center px-4 py-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -80,9 +80,9 @@ export default function LoginModal() {
       >
         <motion.div
           className="bg-white rounded-[28px] w-full max-w-3xl overflow-hidden grid md:grid-cols-2 shadow-2xl max-h-[90vh]"
-          initial={{ scale: 0.94, opacity: 0, y: 10 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.96, opacity: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Left panel — same teal blob + Dav's photo treatment as the hero's first slide */}
